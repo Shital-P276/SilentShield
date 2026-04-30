@@ -1,6 +1,6 @@
 /* ── UI HELPERS ── */
 
-// Animates numbers from 0 to target
+// Animates numbers from 0 to target[cite: 2]
 function countUp(el, target, ms = 800) {
     if (!el) return;
     let start;
@@ -14,14 +14,14 @@ function countUp(el, target, ms = 800) {
     requestAnimationFrame(tick);
 }
 
-// Updates the Dashboard (Score + Progress Bar + Stats)
+// Updates the Dashboard (Score + Progress Bar + Stats)[cite: 2]
 function updateOverviewUI() {
     chrome.storage.local.get(['toxicCount', 'blurCount']).then(data => {
         const toxic = data.toxicCount || 0;
         const blurred = data.blurCount || 0;
 
         // Safety score logic: Starts at 100, drops as toxic items are found
-        // Uses a "totalScanned" buffer so the score isn't 0% immediately
+        // Uses a "totalScanned" buffer so the score isn't 0% immediately[cite: 2]
         const totalScanned = Math.max(toxic, 1);
         const safetyScore = Math.max(0, Math.round(100 - (toxic / (totalScanned + 5)) * 100));
 
@@ -40,10 +40,10 @@ function updateOverviewUI() {
 /* ── INITIAL LOAD & SETTINGS SYNC ── */
 
 window.addEventListener('load', () => {
-    // 1. Initial UI Render
+    // 1. Initial UI Render[cite: 2]
     updateOverviewUI();
 
-    // 2. Restore Saved Settings (Threshold & Toggles)
+    // 2. Restore Saved Settings (Threshold & Toggles)[cite: 2]
     chrome.storage.local.get(['threshold', 'autoBlur', 'showConfidence']).then(data => {
         const slider = document.getElementById('slider');
         const thresholdVal = document.getElementById('threshold-val');
@@ -65,7 +65,7 @@ window.addEventListener('load', () => {
 
 /* ── EVENT LISTENERS ── */
 
-// Tab Switching
+// Tab Switching[cite: 2]
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -76,7 +76,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// Settings: Sensitivity Slider
+// Settings: Sensitivity Slider[cite: 2]
 const sliderEl = document.getElementById('slider');
 if (sliderEl) {
     sliderEl.addEventListener('input', e => {
@@ -87,7 +87,7 @@ if (sliderEl) {
     });
 }
 
-// Settings: Toggles
+// Settings: Toggles[cite: 2]
 const blurToggle = document.getElementById('auto-blur');
 if (blurToggle) {
     blurToggle.addEventListener('change', e => {
@@ -107,21 +107,21 @@ if (confToggle) {
 const resetBtn = document.getElementById('reset-stats-btn');
 if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-        // Clear counts in storage
+        // Clear counts in storage[cite: 2]
         chrome.storage.local.set({ toxicCount: 0, blurCount: 0 }).then(() => {
             updateOverviewUI();
             
-            // Notify content script to reset its local variables
+            // Notify content script to reset its local variables[cite: 2]
             chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
                 if (tabs[0]) {
                     chrome.tabs.sendMessage(tabs[0].id, { type: "RESET_COUNTERS" }).catch(() => {
-                        // Ignore error if content script isn't injected on this page
+                        // Ignore error if content script isn't injected on this page[cite: 2]
                     });
                 }
             });
         });
 
-        // Visual feedback (spin icon)
+        // Visual feedback (spin icon)[cite: 2]
         resetBtn.style.transform = 'rotate(360deg)';
         resetBtn.style.transition = 'transform 0.5s ease';
         setTimeout(() => { 
@@ -147,7 +147,7 @@ if (runBtn) {
         if (resultCard) resultCard.classList.remove('show');
 
         try {
-            // Sends text to background script for Transformers.js analysis
+            // Sends text to background script for Transformers.js analysis[cite: 2]
             const response = await chrome.runtime.sendMessage({ type: 'ANALYZE_TEXT', text });
             const result = response.result[0];
             const isToxic = result.label === 'NEGATIVE';
@@ -186,9 +186,64 @@ if (dashboardBtn) {
 
 /* ── EXTERNAL SYNC ── */
 
-// Listen for updates from content.js while popup is open
+// Listen for updates from content.js while popup is open[cite: 2]
 chrome.storage.onChanged.addListener((changes) => {
     if (changes.toxicCount || changes.blurCount) {
         updateOverviewUI();
     }
 });
+
+/* ── LINK CHECKER MODULE ── */
+
+const checkUrlBtn = document.getElementById('check-url-btn');
+const testUrlInput = document.getElementById('test-url');
+const urlResultCard = document.getElementById('url-result-card');
+const urlResultTag = document.getElementById('url-result-tag');
+const urlResultDesc = document.getElementById('url-result-desc');
+
+// NOTE: In a full production build, you'd fetch this from chrome.storage 
+// or a background script so it stays perfectly synced with content.js
+const FISHY_DOMAINS = [
+    'freemoney.com', 'hack-your-account.net', 'phishing-login.info', 
+    'totally-legit-update.xyz', 'malware-download.org'
+];
+
+if (checkUrlBtn) {
+    checkUrlBtn.addEventListener('click', () => {
+        let urlString = testUrlInput.value.trim();
+        if (!urlString) return;
+
+        // Auto-prepend http:// if the user just types "example.com"
+        if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+            urlString = 'https://' + urlString;
+        }
+
+        if (urlResultCard) urlResultCard.classList.add('show');
+        
+        try {
+            const parsedUrl = new URL(urlString);
+            const domain = parsedUrl.hostname.toLowerCase();
+            
+            const isFishy = FISHY_DOMAINS.some(fishy => domain === fishy || domain.endsWith('.' + fishy));
+            
+            if (isFishy) {
+                // Reuse existing toxic styles[cite: 3]
+                urlResultTag.textContent = 'Danger';
+                urlResultTag.className = 'result-tag toxic'; 
+                urlResultDesc.textContent = `${domain} is flagged as malicious.`;
+            } else {
+                // Reuse existing safe styles[cite: 3]
+                urlResultTag.textContent = 'Safe';
+                urlResultTag.className = 'result-tag safe'; 
+                urlResultDesc.textContent = `${domain} appears to be safe.`;
+            }
+        } catch (e) {
+            // Handle malformed URLs
+            urlResultTag.textContent = 'Invalid';
+            urlResultTag.className = 'result-tag';
+            urlResultTag.style.background = 'var(--raised)';
+            urlResultTag.style.color = 'var(--text-2)';
+            urlResultDesc.textContent = 'Please enter a valid URL.';
+        }
+    });
+}

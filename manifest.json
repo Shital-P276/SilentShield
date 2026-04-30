@@ -1,11 +1,15 @@
 {
   "manifest_version": 3,
   "name": "🛡️ SilentShield",
-  "version": "1.1",
+  "version": "1.2",
   "description": "AI Cyberbullying Protection Browser Extension",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms",
+    "contextMenus", 
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -22,16 +26,22 @@
       "matches": [
         "https://*.reddit.com/*",
         "https://*.x.com/*",
-        "https://*.twitter.com/*"
+        "https://*.twitter.com/*",
+        "https://*.google.com/search*",
+        "https://*.duckduckgo.com/*"
       ],
-      "js": ["content/content.js"],
+      "js": [
+        "content/content.js",
+        "content/linkScanner.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     }
   ],
-  "icons": {
-    "16": "icons/icon-16.png",
-    "32": "icons/icon-32.png",
-    "192": "icons/icon-192.png"
-  }
+  "web_accessible_resources": [
+    {
+      "resources": ["warning.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

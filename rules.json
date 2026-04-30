@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "extensionPath": "/warning.html" }
+    },
+    "condition": {
+      "urlFilter": "||freemoney.com",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "extensionPath": "/warning.html" }
+    },
+    "condition": {
+      "urlFilter": "||hack-your-account.net",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "extensionPath": "/warning.html" }
+    },
+    "condition": {
+      "urlFilter": "||phishing-login.info",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "extensionPath": "/warning.html" }
+    },
+    "condition": {
+      "urlFilter": "||pornhub.com",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 5,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "extensionPath": "/warning.html" }
+    },
+    "condition": {
+      "urlFilter": "||xvideos.com",
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]

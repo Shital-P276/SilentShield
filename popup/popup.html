@@ -37,6 +37,7 @@
   <nav class="nav">
     <button class="tab-btn active" data-tab="overview">Overview</button>
     <button class="tab-btn" data-tab="testbench">Analyzer</button>
+    <button class="tab-btn" data-tab="linkchecker">Link Scanner</button>
     <button class="tab-btn" data-tab="about">About</button>
   </nav>
 
@@ -98,7 +99,19 @@
       </div>
     </div>
 
-    
+    <!-- LINK CHECKER -->
+    <div class="tab-panel" id="tab-linkchecker">
+      <p class="bench-desc">Paste a URL to manually check if it is flagged as a phishing or malware risk.</p>
+      <input type="text" id="test-url" placeholder="https://example.com" />
+      <button class="run-btn" id="check-url-btn">Scan Link</button>
+      <div class="result-card" id="url-result-card">
+        <div class="result-top">
+          <span class="result-label">Result</span>
+          <span class="result-tag" id="url-result-tag">—</span>
+        </div>
+        <div class="result-sub" id="url-result-desc" style="margin-top: 10px; font-size: 13px; color: var(--text-1);">Awaiting input...</div>
+      </div>
+    </div>
 
     <!-- ABOUT -->
     <div class="tab-panel" id="tab-about">
