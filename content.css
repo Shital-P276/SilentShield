@@ -1,19 +1,18 @@
 /* --- 1. SURGICAL SHIELD ENGINE --- */
 .silent-shield-blur {
-  /* Reduced blur from 35px to 12px: Keeps layout 'lines' and context visible while hiding specific words */
+  /* surgical blur for text to keep layout context visible */
   filter: blur(12px) brightness(0.9) grayscale(50%) !important;
   transition: filter 0.3s ease-in-out !important;
-  pointer-events: auto !important; 
+  pointer-events: auto !important;
   user-select: none !important;
   position: relative !important;
-  /* Maintains the element's space in the grid to prevent 'blank' gaps */
-  display: inline-block !important; 
+  display: inline-block !important;
   overflow: hidden !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
 
-/* Specific Shielded Overlay - Reduced size for surgical precision */
+/* Specific Shielded Overlay */
 .silent-shield-blur::after {
   content: "🛡️";
   position: absolute;
@@ -25,30 +24,47 @@
   pointer-events: none;
 }
 
-/* --- 2. MODAL VISIBILITY & PERSISTENCE --- */
+/* --- 2. MEDIA & VIDEO PROTECTIONS (Reddit & Images) --- */
+
+/* High-intensity blur for Reddit video players */
+shreddit-player.silent-shield-blur, 
+video.silent-shield-blur,
+[data-testid="post-container"] video.silent-shield-blur {
+  filter: blur(45px) brightness(0.2) grayscale(100%) !important;
+  background: #000 !important;
+  border-radius: 12px !important;
+}
+
+/* Targeting for Google Image Search result tiles */
+div[data-ri].silent-shield-blur img,
+.mG61Hc.silent-shield-blur,
+.rg_i.silent-shield-blur {
+  filter: blur(30px) brightness(0.4) !important;
+  pointer-events: none !important;
+}
+
+/* --- 3. MODAL VISIBILITY & PERSISTENCE --- */
 #shield-warning-modal {
   position: fixed !important;
   inset: 0 !important;
-  /* Slightly more transparent background to keep page context visible behind the modal */
-  background: rgba(0, 0, 0, 0.9) !important; 
+  background: rgba(0, 0, 0, 0.95) !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
-  z-index: 2147483647 !important; 
+  z-index: 2147483647 !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
 
 .shield-modal-content {
   background: #121212 !important;
-  border: 2px solid #ff4757 !important; 
+  border: 3px solid #ff4757 !important; 
   border-radius: 20px !important;
   padding: 40px !important;
   text-align: center !important;
   max-width: 420px !important;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8) !important;
-  /* CRITICAL: Ensures the warning text itself is never blurred */
-  filter: none !important; 
+  box-shadow: 0 10px 60px rgba(255, 71, 87, 0.3) !important;
+  filter: none !important;
   animation: modalFadeIn 0.3s ease-out !important;
 }
 
@@ -63,7 +79,6 @@
   font-weight: 900 !important;
   margin-bottom: 12px !important;
   display: block !important;
-  font-family: system-ui, -apple-system, sans-serif !important;
 }
 
 .shield-description {
@@ -82,17 +97,9 @@
   border-radius: 8px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  text-transform: uppercase !important;
 }
 
-#close-shield-modal:hover { 
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(255, 71, 87, 0.3);
-}
-
-/* --- 3. PLATFORM OVERRIDES (Twitter/X, Reddit) --- */
-/* Ensure layout blocks remain visible but content inside is shielded */
+/* --- 4. PLATFORM OVERRIDES (Twitter/X, Reddit) --- */
 [data-testid="tweetText"].silent-shield-blur,
 [data-testid="post-container"].silent-shield-blur,
 shreddit-post.silent-shield-blur {
