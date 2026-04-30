@@ -142,29 +142,64 @@ if (runBtn) {
         const text = testText.value.trim();
         if (!text) return;
 
-        runBtn.textContent = 'Analyzing…';
+        runBtn.textContent = 'Analyzing with Grok…';
         runBtn.disabled = true;
         if (resultCard) resultCard.classList.remove('show');
 
         try {
-            // Sends text to background script for Transformers.js analysis
-            const response = await chrome.runtime.sendMessage({ type: 'ANALYZE_TEXT', text });
-            const result = response.result[0];
-            const isToxic = result.label === 'NEGATIVE';
+            // Send text to background script for Grok API analysis
+            const response = await chrome.runtime.sendMessage({ 
+                action: 'analyzeWithGrok', 
+                text: text 
+            });
+
+            if (response.error) {
+                throw new Error(response.error);
+            }
+
+            const result = response.result;
+            const isToxic = result.isToxic;
+            const confidence = Math.round(result.confidence * 100);
 
             const resultTag = document.getElementById('result-tag');
             const resultScore = document.getElementById('result-score');
+            const resultExplanation = document.getElementById('result-explanation');
 
             if (resultTag) {
-                resultTag.textContent = isToxic ? 'Toxic' : 'Safe';
-                resultTag.className = 'result-tag ' + (isToxic ? 'toxic' : 'safe');
+                const categoryDisplay = result.category === 'cyber_bullying' ? 'CYBER BULLYING' : result.category.toUpperCase();
+                resultTag.textContent = isToxic ? '⚠️ ' + categoryDisplay : '✓ Safe';
+                resultTag.className = 'result-tag ' + (isToxic ? result.severity : 'safe');
             }
-            if (resultScore) resultScore.textContent = (result.score * 100).toFixed(1) + '%';
+            if (resultScore) {
+                resultScore.textContent = confidence + '% confidence';
+            }
+            if (resultExplanation) {
+                resultExplanation.textContent = result.explanation;
+                resultExplanation.style.display = 'block';
+            }
             if (resultCard) resultCard.classList.add('show');
+
+            // Store the analysis in history
+            if (isToxic) {
+                const currentToxic = (await chrome.storage.local.get('toxicCount')).toxicCount || 0;
+                await chrome.storage.local.set({ toxicCount: currentToxic + 1 });
+            }
+
         } catch (err) {
             console.error('SilentShield Analyzer Error:', err);
+            const resultTag = document.getElementById('result-tag');
+            const resultScore = document.getElementById('result-score');
+            
+            if (resultTag) {
+                resultTag.textContent = 'Error';
+                resultTag.className = 'result-tag error';
+            }
+            if (resultScore) {
+                resultScore.textContent = err.message || 'Failed to analyze';
+            }
+            if (resultCard) resultCard.classList.add('show');
         } finally {
-            runBtn.textContent = 'Run Inference';
+            runBtn.textContent = 'Run Analysis';
             runBtn.disabled = false;
         }
     });

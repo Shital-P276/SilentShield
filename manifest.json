@@ -30,11 +30,11 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firestore.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com;"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firestore.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.groq.com;"
   },
   "web_accessible_resources": [
     {
-      "resources": ["dashboard/*", "icons/*"],
+      "resources": ["dashboard/*", "icons/*", "config.js"],
       "matches": ["<all_urls>"]
     }
   ],

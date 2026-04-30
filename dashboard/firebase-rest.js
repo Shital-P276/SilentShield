@@ -3,12 +3,29 @@
  * Implements Firebase Authentication using REST API (no SDK, no eval required)
  */
 
-const FIREBASE_API_KEY = "AIzaSyBcQNVjpXh8iFCirQ6Dr3DWUecgPWJ-4FY";
-const FIREBASE_PROJECT_ID = "silentshield-39e11";
+// Load config from config.js - use internal variable to avoid conflict
+let __CONFIG = null;
 
-// Firebase Auth REST API endpoints
-const AUTH_BASE_URL = `https://identitytoolkit.googleapis.com/v1`;
-const TOKEN_URL = `https://securetoken.googleapis.com/v1`;
+async function loadConfig() {
+  if (__CONFIG) return __CONFIG;
+  
+  // First check if already loaded globally
+  if (typeof window !== 'undefined' && window.CONFIG) {
+    __CONFIG = window.CONFIG;
+    return __CONFIG;
+  }
+  
+  // Try to import config.js
+  try {
+    const configModule = await import(chrome.runtime.getURL('config.js'));
+    __CONFIG = configModule.default || configModule.CONFIG || window.CONFIG;
+  } catch (e) {
+    console.error('Failed to load config.js:', e);
+    throw new Error('config.js not found. Please ensure config.js exists in extension root.');
+  }
+  
+  return __CONFIG;
+}
 
 // Global firebase object to maintain compatibility with dashboard.js
 window.firebase = {
@@ -23,7 +40,8 @@ const FirebaseAuthRest = {
 
   // Sign in with email/password
   signInWithEmailAndPassword: async function(email, password) {
-    const url = `${AUTH_BASE_URL}/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
+    await loadConfig();
+    const url = `${__CONFIG.AUTH_BASE_URL}/accounts:signInWithPassword?key=${__CONFIG.FIREBASE_API_KEY}`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -52,7 +70,8 @@ const FirebaseAuthRest = {
 
   // Create user with email/password
   createUserWithEmailAndPassword: async function(email, password) {
-    const url = `${AUTH_BASE_URL}/accounts:signUp?key=${FIREBASE_API_KEY}`;
+    await loadConfig();
+    const url = `${__CONFIG.AUTH_BASE_URL}/accounts:signUp?key=${__CONFIG.FIREBASE_API_KEY}`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -108,7 +127,8 @@ const FirebaseAuthRest = {
 
   // Refresh token
   refreshToken: async function(refreshToken) {
-    const url = `${TOKEN_URL}/token?key=${FIREBASE_API_KEY}`;
+    await loadConfig();
+    const url = `${__CONFIG.TOKEN_URL}/token?key=${__CONFIG.FIREBASE_API_KEY}`;
     
     const response = await fetch(url, {
       method: 'POST',

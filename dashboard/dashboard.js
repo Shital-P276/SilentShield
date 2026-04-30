@@ -489,7 +489,8 @@
     const icons = {
       toxic: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
       hate: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>',
-      harassment: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'
+      harassment: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+      cyber_bullying: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>'
     };
     return icons[category] || icons.toxic;
   }
@@ -602,31 +603,56 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
         <circle cx="12" cy="12" r="10"></circle>
       </svg>
-      Analyzing...
+      Analyzing with Grok...
     `;
 
-    // Small delay for UX
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      // Send to background script for Grok API analysis
+      const response = await chrome.runtime.sendMessage({ 
+        action: 'analyzeWithGrok', 
+        text: text 
+      });
 
-    // Real analysis using detection engine
-    const result = analyzeTextReal(text);
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
-    if (result.error) {
-      showAnalysisError(result.error);
-    } else {
+      const grokResult = response.result;
+      
+      // Convert Grok result to dashboard format
+      const result = {
+        verdict: grokResult.isToxic ? 'Toxic Detected' : 'Safe',
+        verdictClass: grokResult.isToxic ? grokResult.severity : 'safe',
+        confidence: grokResult.confidence,
+        primaryCategory: grokResult.category,
+        categories: [
+          { 
+            name: grokResult.category.toUpperCase(), 
+            desc: grokResult.explanation, 
+            score: grokResult.confidence, 
+            class: grokResult.severity 
+          }
+        ],
+        summary: grokResult.explanation
+      };
+
       displayAnalysisResult(result);
 
       // Add to history if toxic and storeHistory is enabled
-      if (result.confidence > 0.5 && currentSettings.storeHistory) {
+      if (grokResult.isToxic && currentSettings.storeHistory) {
         await addToHistory({
           text: text.substring(0, 200),
-          category: result.primaryCategory === 'safe' ? 'toxic' : result.primaryCategory,
-          confidence: Math.round(result.confidence * 100) + '%',
-          score: result.confidence,
-          source: 'Live Analyzer',
+          category: grokResult.category,
+          confidence: Math.round(grokResult.confidence * 100) + '%',
+          score: grokResult.confidence,
+          source: 'Grok AI Analyzer',
           action: 'Analyzed'
         });
       }
+
+    } catch (error) {
+      console.error('Grok analysis error:', error);
+      showAnalysisError('Analysis failed: ' + error.message);
     }
 
     isAnalyzing = false;
