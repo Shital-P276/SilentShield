@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+  <!-- Transformers.js CDN - 100% browser ML -->
+  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2"></script>
+</head>
+<body>
+  <div class="shield-container">
+    <!-- Header -->
+    <div class="shield-header">
+      <div class="shield-logo">🛡️</div>
+      <h1>Silent Shield</h1>
+      <div class="status" id="shieldStatus">Initializing...</div>
+    </div>
+
+    <!-- Analysis Input -->
+    <div class="input-section">
+      <textarea 
+        id="shieldInput" 
+        placeholder="Paste text or select on page..."
+        rows="4">
+      </textarea>
+      <button id="scanBtn" class="scan-button" disabled>🛡️ SCAN</button>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsSection" class="results-section" style="display: none;">
+      <div class="threat-gauge">
+        <div class="gauge-container">
+          <div class="gauge" id="threatGauge">
+            <div class="gauge-fill" id="gaugeFill"></div>
+          </div>
+        </div>
+        <div class="gauge-labels">
+          <span id="threatLevel" class="threat-label">SAFE</span>
+          <span id="confidenceScore" class="confidence">0%</span>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric toxicity">
+          <span class="metric-label">Toxicity</span>
+          <span id="toxicityValue" class="metric-value">0%</span>
+        </div>
+        <div class="metric threats">
+          <span class="metric-label">Threats</span>
+          <span id="threatValue" class="metric-value">0%</span>
+        </div>
+      </div>
+
+      <div id="shieldExplanation" class="explanation-panel">
+        Analysis ready...
+      </div>
+
+      <div class="action-buttons">
+        <button id="safeReplyBtn" class="action-btn safe-reply-btn">💬 Safe Reply</button>
+        <button id="blockBtn" class="action-btn block-btn">🚫 Block</button>
+        <button id="reportBtn" class="action-btn report-btn">📢 Report</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <span>Scans: <span id="scanCount">0</span></span>
+      <span id="shieldToggle" class="shield-toggle">Shield: ON</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

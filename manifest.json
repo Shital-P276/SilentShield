@@ -1,40 +1,33 @@
 {
   "manifest_version": 3,
-  "name": "SilentShield - AI Cyberbullying Protection",
+  "name": "🛡️ Silent Shield",
   "version": "1.0",
-  "description": "Silent protection from cyberbullying and malicious links using AI",
-  "icons": {
-    "16": "icons/icon-16.png",
-    "32": "icons/icon-32.png",
-    "192": "icons/icon-192.png"
+  "description": "AI-powered cyber threat detection - toxicity, bullying, scams",
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup/popup.html",
-    "default_title": "SilentShield"
+    "default_popup": "popup.html",
+    "default_title": "Silent Shield AI"
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://*.x.com/*",
-        "https://*.twitter.com/*",
-        "https://*.facebook.com/*",
-        "https://*.instagram.com/*",
-        "https://*.reddit.com/*"
-      ],
-      "js": ["content/content.js"],
-      "run_at": "document_idle",
-      "all_frames": true
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
     }
   ],
-  "permissions": [
-    "storage",
-    "activeTab"
-  ],
-  "host_permissions": [
-    "https://*.x.com/*",
-    "https://*.twitter.com/*",
-    "https://*.facebook.com/*",
-    "https://*.instagram.com/*",
-    "https://*.reddit.com/*"
-  ]
+  "icons": {
+    "16": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDhB0g0IDQgMCAxIDEgOCAxMiA0IDQgMCAwIDEgMTIgOFoiIGZpbGw9IiMxRjd3RkMiLz4KPHBhdGggZD0iTTExLjMgNi43TDggM2wtMy4zIDMuN0w2LjUgMTFsMi41LTIuNUw5LjUgMTBsMS44LTEuM1oiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=",
+    "48": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2IDI0QTEyIDEyIDAgMSAxIDI0IDM2IDEyIDEyIDAgMCAxIDM2IDI0WiIgZmlsbD0iIzFGN3dGQyIvPgo8cGF0aCBkPSJNMzMuOSA2MEw0OCAzM2wtOS4xIDEyLjhMMjQgMjRsLTcuNSAxMi4yTDEyIDM2bDE0LjctMjAuNUw0OCAzM3oiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo="
+  }
 }
