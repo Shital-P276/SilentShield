@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SilentShield</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M6.5 1.5L11 4V8C11 10.5 9 12.5 6.5 13C4 12.5 2 10.5 2 8V4L6.5 1.5Z" stroke="#34c77b" stroke-width="1.1" stroke-linejoin="round"/>
+          <path d="M4.5 6.5L6 8L8.5 5" stroke="#34c77b" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      SilentShield
+    </div>
+    <div class="badge">
+      <div class="badge-dot"></div>
+      active
+    </div>
+<button class="refresh-btn" id="reset-stats-btn" title="Reset Session Stats">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 4v6h-6"></path>
+    <path d="M1 20v-6h6"></path>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+  </svg>
+</button>
+  </div>
+
+  <nav class="nav">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="testbench">Analyzer</button>
+    <button class="tab-btn" data-tab="about">About</button>
+  </nav>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="score-block">
+        <div class="score-eyebrow">Feed Safety Score</div>
+        <div class="score-main">
+          <div class="score-num" id="score-display">0</div>
+          <div class="score-pct">%</div>
+        </div>
+        <div class="score-bar">
+          <div class="score-fill" id="score-fill"></div>
+        </div>
+        <div class="score-model">distilbert-base-uncased · local inference</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat danger">
+          <div class="stat-label">Toxic Detected</div>
+          <div class="stat-val" id="toxic-count">0</div>
+        </div>
+        <div class="stat amber">
+          <div class="stat-label">Auto-Blurred</div>
+          <div class="stat-val" id="blur-count">0</div>
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <span>Inference engine</span>
+        <span>ONNX · CPU mode</span>
+      </div>
+
+      <button class="dashboard-btn" id="open-dashboard-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        Open Full Dashboard
+      </button>
+    </div>
+
+    <!-- TEST BENCH -->
+    <div class="tab-panel" id="tab-testbench">
+      <p class="bench-desc">Paste any comment to see how the local model will classify it before it hits your feed.</p>
+      <textarea id="test-text" rows="5" placeholder="Paste a comment to analyze…"></textarea>
+      <button class="run-btn" id="run-btn">Run Inference</button>
+      <div class="result-card" id="result-card">
+        <div class="result-top">
+          <span class="result-label">Result</span>
+          <span class="result-tag" id="result-tag">—</span>
+        </div>
+        <div class="result-score" id="result-score">—</div>
+        <div class="result-sub">confidence score</div>
+      </div>
+    </div>
+
+    
+
+    <!-- ABOUT -->
+    <div class="tab-panel" id="tab-about">
+      <div class="about-top">
+        <div class="about-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 2L17 5.5V11C17 15 13.5 18.5 10 19C6.5 18.5 3 15 3 11V5.5L10 2Z" stroke="#34c77b" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M7 10L9 12L13 8" stroke="#34c77b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="about-name">SilentShield</div>
+          <div class="about-version">v1.0.0</div>
+        </div>
+      </div>
+      <div class="about-body">
+        <p>Runs <strong>Transformers.js</strong> entirely within your browser via ONNX runtime. No data ever leaves your device — analysis is fully local and real-time.</p>
+        <p>Built for developers and privacy-conscious users who want control over what they see online.</p>
+        <div class="about-tags">
+          <span class="about-tag">Zero telemetry</span>
+          <span class="about-tag">Local ONNX</span>
+          <span class="about-tag">No account</span>
+          <span class="about-tag">Open source</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <span>CPU Inference: ON</span>
+    <span>SHIELD-250-SF</span>
+  </footer>
+
+  <script src="../cyber-analyzer.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
