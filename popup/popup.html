@@ -4,72 +4,160 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SilentShield</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <!-- Tailwind CSS CDN for quick modern look -->
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="w-80 bg-gray-900 text-white">
-  <div class="p-4">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
-      <div class="flex items-center gap-2">
-        <h1 class="text-2xl font-bold text-emerald-400">SilentShield</h1>
+<body>
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M6.5 1.5L11 4V8C11 10.5 9 12.5 6.5 13C4 12.5 2 10.5 2 8V4L6.5 1.5Z" stroke="#34c77b" stroke-width="1.1" stroke-linejoin="round"/>
+          <path d="M4.5 6.5L6 8L8.5 5" stroke="#34c77b" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
-      <span id="status" class="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full">Active</span>
+      SilentShield
     </div>
-
-    <!-- Safety Score -->
-    <div class="bg-gray-800 rounded-xl p-5 mb-6 text-center">
-      <p class="text-sm text-gray-400 mb-1">Your Feed Safety</p>
-      <div id="safety-score" class="text-6xl font-bold text-emerald-400">92%</div>
-      <p class="text-xs text-gray-500 mt-2">Protected by AI</p>
-    </div>
-
-    <!-- Stats -->
-    <div class="grid grid-cols-2 gap-3 mb-6">
-      <div class="bg-gray-800 rounded-xl p-4">
-        <p class="text-xs text-gray-400">Toxic Detected</p>
-        <div id="toxic-count" class="text-3xl font-semibold text-red-400">7</div>
-      </div>
-      <div class="bg-gray-800 rounded-xl p-4">
-        <p class="text-xs text-gray-400">Hidden/Blurred</p>
-        <div id="hidden-count" class="text-3xl font-semibold text-amber-400">5</div>
-      </div>
-    </div>
-
-    <!-- Controls -->
-    <div class="space-y-4">
-      <div>
-        <label class="flex items-center justify-between text-sm">
-          <span>Sensitivity</span>
-          <span id="threshold-value" class="font-mono">0.75</span>
-        </label>
-        <input type="range" id="threshold-slider" min="0.5" max="0.95" step="0.05" value="0.75" 
-               class="w-full accent-emerald-500">
-      </div>
-
-      <div class="flex items-center justify-between">
-        <span class="text-sm">Auto Blur Toxic Comments</span>
-        <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="auto-blur" checked class="sr-only peer">
-          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-        </label>
-      </div>
-    </div>
-
-    <!-- Test Box -->
-    <div class="mt-6">
-      <p class="text-sm mb-2">Test a message</p>
-      <textarea id="test-text" rows="3" 
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm resize-y"
-                placeholder="Paste any comment here..."></textarea>
-      <button id="test-btn"
-              class="mt-2 w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg font-medium">
-        Check Toxicity
-      </button>
-      <div id="test-result" class="mt-3 text-sm"></div>
+    <div class="badge">
+      <div class="badge-dot"></div>
+      active
     </div>
   </div>
+
+  <nav class="nav">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="settings">DashBoard</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
+    <button class="tab-btn" data-tab="about">About</button>
+  </nav>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="score-block">
+        <div class="score-eyebrow">Feed Safety Score</div>
+        <div class="score-main">
+          <div class="score-num" id="score-display">0</div>
+          <div class="score-pct">%</div>
+        </div>
+        <div class="score-bar">
+          <div class="score-fill" id="score-fill"></div>
+        </div>
+        <div class="score-model">distilbert-base-uncased · local inference</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat danger">
+          <div class="stat-label">Toxic Detected</div>
+          <div class="stat-val" id="toxic-count">0</div>
+        </div>
+        <div class="stat amber">
+          <div class="stat-label">Auto-Blurred</div>
+          <div class="stat-val" id="blur-count">0</div>
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <span>Inference engine</span>
+        <span>ONNX · CPU mode</span>
+      </div>
+    </div>
+
+    <!-- TEST BENCH -->
+    <div class="tab-panel" id="tab-testbench">
+      <p class="bench-desc">Paste any comment to see how the local model will classify it before it hits your feed.</p>
+      <textarea id="test-text" rows="5" placeholder="Paste a comment to analyze…"></textarea>
+      <button class="run-btn" id="run-btn">Run Inference</button>
+      <div class="result-card" id="result-card">
+        <div class="result-top">
+          <span class="result-label">Result</span>
+          <span class="result-tag" id="result-tag">—</span>
+        </div>
+        <div class="result-score" id="result-score">—</div>
+        <div class="result-sub">confidence score</div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="setting-block">
+        <div class="setting-head">
+          <span class="setting-title">Sensitivity Threshold</span>
+          <span class="setting-val" id="threshold-val">0.75</span>
+        </div>
+        <div class="setting-desc">Higher values are more forgiving — lower values catch more edge cases.</div>
+        <input type="range" id="slider" min="0.5" max="0.95" step="0.05" value="0.75">
+        <div class="range-ends">
+          <span class="range-end">Strict</span>
+          <span class="range-end">Lenient</span>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="t-name">Auto-Blur Content</div>
+            <div class="t-sub">Hide toxic text behind a blur</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="auto-blur" checked>
+            <div class="t-track"></div>
+            <div class="t-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="t-name">Show Confidence Score</div>
+            <div class="t-sub">Display model certainty on blurred items</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="show-confidence" checked>
+            <div class="t-track"></div>
+            <div class="t-thumb"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="tab-panel" id="tab-about">
+      <div class="about-top">
+        <div class="about-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 2L17 5.5V11C17 15 13.5 18.5 10 19C6.5 18.5 3 15 3 11V5.5L10 2Z" stroke="#34c77b" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M7 10L9 12L13 8" stroke="#34c77b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="about-name">SilentShield</div>
+          <div class="about-version">v1.0.0</div>
+        </div>
+      </div>
+      <div class="about-body">
+        <p>Runs <strong>Transformers.js</strong> entirely within your browser via ONNX runtime. No data ever leaves your device — analysis is fully local and real-time.</p>
+        <p>Built for developers and privacy-conscious users who want control over what they see online.</p>
+        <div class="about-tags">
+          <span class="about-tag">Zero telemetry</span>
+          <span class="about-tag">Local ONNX</span>
+          <span class="about-tag">No account</span>
+          <span class="about-tag">Open source</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <span>CPU Inference: ON</span>
+    <span>SHIELD-250-SF</span>
+  </footer>
 
   <script src="popup.js"></script>
 </body>
