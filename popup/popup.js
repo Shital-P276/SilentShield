@@ -237,50 +237,58 @@ chrome.storage.onChanged.addListener((changes) => {
     }
 });
 
-/* ── LINK CHECKER ── */
+/* ── LINK CHECKER MODULE ── */
 
-const checkUrlBtn   = document.getElementById('check-url-btn');
-const testUrlInput  = document.getElementById('test-url');
+const checkUrlBtn = document.getElementById('check-url-btn');
+const testUrlInput = document.getElementById('test-url');
 const urlResultCard = document.getElementById('url-result-card');
-const urlResultTag  = document.getElementById('url-result-tag');
+const urlResultTag = document.getElementById('url-result-tag');
 const urlResultDesc = document.getElementById('url-result-desc');
-
-const FISHY_DOMAINS = [
-    'freemoney.com', 'hack-your-account.net', 'phishing-login.info',
-    'totally-legit-update.xyz', 'malware-download.org'
-];
 
 if (checkUrlBtn) {
     checkUrlBtn.addEventListener('click', () => {
         let urlString = testUrlInput.value.trim();
         if (!urlString) return;
 
+        // Auto-prepend http:// if the user just types "example.com"
         if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
             urlString = 'https://' + urlString;
         }
 
         if (urlResultCard) urlResultCard.classList.add('show');
+        
+        // Show loading state while querying the massive database
+        urlResultTag.textContent = 'SCANNING';
+        urlResultTag.className = 'result-tag';
+        urlResultTag.style.background = 'var(--raised)';
+        urlResultTag.style.color = 'var(--text-1)';
+        urlResultDesc.textContent = 'Checking against active threat database...';
 
-        try {
-            const parsedUrl = new URL(urlString);
-            const domain    = parsedUrl.hostname.toLowerCase();
-            const isFishy   = FISHY_DOMAINS.some(f => domain === f || domain.endsWith('.' + f));
-
-            if (isFishy) {
-                urlResultTag.textContent = 'Danger';
-                urlResultTag.className   = 'result-tag toxic';
-                urlResultDesc.textContent = `${domain} is flagged as malicious.`;
-            } else {
-                urlResultTag.textContent = 'Safe';
-                urlResultTag.className   = 'result-tag safe';
-                urlResultDesc.textContent = `${domain} appears to be safe.`;
+        // Send the URL to the background script to test against the real rules
+        chrome.runtime.sendMessage({ action: 'testLink', url: urlString }, (response) => {
+            // Check if the background script disconnected or threw an error
+            if (chrome.runtime.lastError || !response) {
+                urlResultTag.textContent = 'ERROR';
+                urlResultTag.style.background = 'var(--raised)';
+                urlResultTag.style.color = 'var(--text-2)';
+                urlResultDesc.textContent = 'Could not connect to the scanner engine.';
+                return;
             }
-        } catch (e) {
-            urlResultTag.textContent = 'Invalid';
-            urlResultTag.className   = 'result-tag';
-            urlResultTag.style.background = 'var(--raised)';
-            urlResultTag.style.color      = 'var(--text-2)';
-            urlResultDesc.textContent = 'Please enter a valid URL.';
-        }
+
+            // Clear inline styles from the loading state
+            urlResultTag.style.background = '';
+            urlResultTag.style.color = '';
+
+            // Update UI based on background script's real analysis
+            if (response.isSafe) {
+                urlResultTag.textContent = 'SAFE';
+                urlResultTag.className = 'result-tag safe'; 
+                urlResultDesc.textContent = `${urlString} appears to be safe.`;
+            } else {
+                urlResultTag.textContent = 'BLOCKED';
+                urlResultTag.className = 'result-tag toxic'; 
+                urlResultDesc.innerHTML = `<strong>${urlString}</strong> is flagged as malicious.<br><span style="color:var(--danger); font-size: 11px; display:block; margin-top:4px;">Reason: ${response.reason}</span>`;
+            }
+        });
     });
 }

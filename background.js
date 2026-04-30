@@ -1,24 +1,24 @@
-// background.js - SilentShield AI Pro - Unified Service Worker
-import { shield } from './linkguard.js';
+// background.js - SilentShield Unified Service Worker
+console.log('🛡️ Silent Shield: Service Worker Active');
 
-console.log('🛡️ SilentShield AI Pro: Service Worker Active');
-
-// ── BLOCKLIST CONFIG ──
+// We use an established, open-source blocklist (Malware + Adware + Porn)
 const DB_URL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn/hosts";
-const MAX_RULES = 4500;
+const MAX_RULES = 4500; // Chrome limits dynamic rules
 const BLOCKED_KEYWORDS = [
   'xhamster', 'xnxx', 'eporner', 'nhentai', 'thumbzilla', 'pornhub',
-  'free-hack', 'cracked-accounts'
+  'free-hack', 'cracked-accounts' // You can add phishing keywords here too
 ];
 
 async function fetchAndApplyBlocklist() {
   console.log("🛡️ SilentShield: Fetching latest threat database...");
+  
   try {
     const response = await fetch(DB_URL);
     const text = await response.text();
+    
     const lines = text.split('\n');
     const domains = [];
-
+    
     for (let line of lines) {
       if (line.startsWith('#') || line.trim() === '') continue;
       const parts = line.trim().split(/\s+/);
@@ -31,22 +31,35 @@ async function fetchAndApplyBlocklist() {
     }
 
     console.log(`🛡️ SilentShield: Parsed ${domains.length} domains.`);
+    console.log("🧪 Test Domains:", domains.slice(0, 10));
 
-    const domainRules = domains.slice(0, MAX_RULES).map((domain, index) => ({
-      id: index + 1,
-      priority: 1,
-      action: { type: "redirect", redirect: { extensionPath: "/warning.html" } },
-      condition: { urlFilter: "||" + domain, resourceTypes: ["main_frame"] }
-    }));
+    // 1. Generate rules for the downloaded DOMAINS
+    const domainRules = domains.slice(0, MAX_RULES).map((domain, index) => {
+      return {
+        id: index + 1, // IDs 1 to 4500
+        priority: 1,
+        action: { type: "redirect", redirect: { extensionPath: "/warning.html" } },
+        condition: { urlFilter: "||" + domain, resourceTypes: ["main_frame"] }
+      };
+    });
 
-    const keywordRules = BLOCKED_KEYWORDS.map((keyword, index) => ({
-      id: 100000 + index,
-      priority: 2,
-      action: { type: "redirect", redirect: { extensionPath: "/warning.html" } },
-      condition: { urlFilter: keyword, resourceTypes: ["main_frame"] }
-    }));
+    // 2. Generate rules for your custom KEYWORDS
+    const keywordRules = BLOCKED_KEYWORDS.map((keyword, index) => {
+      return {
+        id: 100000 + index, // Offset IDs so they don't clash with the domain rules
+        priority: 2,        // Give keywords a slightly higher priority
+        action: { type: "redirect", redirect: { extensionPath: "/warning.html" } },
+        condition: { 
+          urlFilter: keyword, // No '||' means this will match anywhere in the URL!
+          resourceTypes: ["main_frame"] 
+        }
+      };
+    });
 
+    // 3. Combine both sets of rules
     const allNewRules = [...domainRules, ...keywordRules];
+
+    // 4. Wipe old rules and apply the new combined list
     const oldRules = await chrome.declarativeNetRequest.getDynamicRules();
     const oldRuleIds = oldRules.map(rule => rule.id);
 
@@ -63,16 +76,15 @@ async function fetchAndApplyBlocklist() {
   }
 }
 
-// ── INITIALIZATION ──
+// ── INITIALIZATION & LISTENERS ──
+
+// Run on install/update
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    console.log('🛡️ SilentShield: Fresh install');
+    console.log('🛡️ Silent Shield: Fresh install');
   }
-
-  // Init AI models
-  shield.init();
-
-  // Setup Context Menu
+  
+  // 1. Setup Context Menu
   chrome.contextMenus.create({
     id: "silentShieldAnalyze",
     title: "🛡️ Silent Shield: Scan Selection",
@@ -84,21 +96,21 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
   });
 
-  // Fetch blocklist
+  // 2. Fetch the blocklist
   fetchAndApplyBlocklist();
-
-  // Daily sync alarm
+  
+  // 3. Set daily sync alarm
   chrome.alarms.create("syncDatabase", { periodInMinutes: 1440 });
 });
 
-// ── ALARMS ──
+// Handle alarms
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "syncDatabase") {
     fetchAndApplyBlocklist();
   }
 });
 
-// ── CONTEXT MENU ──
+// Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "silentShieldAnalyze") {
     chrome.tabs.sendMessage(tab.id, {
@@ -106,48 +118,15 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       text: info.selectionText,
       tabId: tab.id
     });
-
+    
     chrome.action.setBadgeText({ text: 'AI', tabId: tab.id });
     chrome.action.setBadgeBackgroundColor({ color: '#ff6b6b', tabId: tab.id });
     setTimeout(() => chrome.action.setBadgeText({ text: '' }), 3000);
   }
 });
 
-// ── MESSAGE HANDLER ──
+// Handle messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-
-  // F1: AI text analysis via ShieldAI
-  if (request.action === "analyzeText") {
-    shield.analyzeText(request.text).then(sendResponse);
-    return true;
-  }
-
-  // F1: AI image/NSFW analysis via ShieldAI
-  if (request.action === "analyzeImage") {
-    shield.analyzeImage(request.imgUrl).then(sendResponse);
-    return true;
-  }
-
-  // F1: Typing warning — trigger speech + modal in content script
-  if (request.action === "typingWarning") {
-    chrome.scripting.executeScript({
-      target: { tabId: sender.tab.id },
-      func: () => {
-        const msg = "Warning: You are typing abusive language.";
-        const utterance = new SpeechSynthesisUtterance(msg);
-        utterance.rate = 0.85;
-        window.speechSynthesis.speak(utterance);
-        if (typeof window.showAttractiveWarning === "function") {
-          window.showAttractiveWarning();
-        } else {
-          alert(msg);
-        }
-      }
-    });
-    return;
-  }
-
-  // F2: Dashboard / stats messages
   switch (request.action) {
     case 'getShieldStatus':
       chrome.storage.local.get(['modelReady','scanCount','shieldActive','toxicCount','blurCount','inferenceCount'], (result) => {
@@ -167,22 +146,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
 
     case 'clearAllHistory':
-      chrome.storage.local.set({
-        toxicCount: 0, blurCount: 0, inferenceCount: 0,
-        detectedHistory: [], dailyTrends: {}
-      }, () => sendResponse({ success: true }));
+      chrome.storage.local.set({toxicCount: 0, blurCount: 0, inferenceCount: 0, detectedHistory: [], dailyTrends: {}}, () => sendResponse({ success: true }));
       return true;
 
     case 'updateStats':
-      chrome.storage.local.set({ scanCount: (request.scanCount || 0), lastScan: Date.now() });
+      chrome.storage.local.set({scanCount: (request.scanCount || 0), lastScan: Date.now()});
       break;
 
     case 'toggleShield':
-      chrome.storage.local.set({ shieldActive: request.active });
+      chrome.storage.local.set({shieldActive: request.active});
       break;
 
-    case 'FORCE_SYNC':
-      fetchAndApplyBlocklist().then(() => sendResponse({ status: "success" }));
-      return true;
+    case 'FORCE_SYNC': // Allow popup to force a manual sync
+      fetchAndApplyBlocklist().then(() => sendResponse({status: "success"}));
+      return true; 
+      
+    case 'testLink':
+      let urlToTest = request.url.trim();
+      if (!urlToTest.startsWith('http://') && !urlToTest.startsWith('https://')) {
+        urlToTest = 'https://' + urlToTest;
+      }
+
+      // 1. Check custom keywords
+      const hasKeyword = BLOCKED_KEYWORDS.some(kw => urlToTest.toLowerCase().includes(kw));
+      if (hasKeyword) {
+        sendResponse({ isSafe: false, reason: "Flagged by Keyword Blocklist" });
+        return true; 
+      }
+
+      // 2. Check declarativeNetRequest rules via Promise API
+      if (chrome.declarativeNetRequest && chrome.declarativeNetRequest.testMatchOutcome) {
+        chrome.declarativeNetRequest.testMatchOutcome({
+          url: urlToTest,
+          type: "main_frame"
+        }).then(outcome => {
+          if (outcome && outcome.matchedRules && outcome.matchedRules.length > 0) {
+            sendResponse({ isSafe: false, reason: "Flagged by Threat Database" });
+          } else {
+            sendResponse({ isSafe: true });
+          }
+        }).catch(err => {
+          console.error("SilentShield testMatchOutcome error:", err);
+          sendResponse({ isSafe: true, reason: "Error matching outcome: " + err.message });
+        });
+        
+        return true; // Crucial: Keeps the message channel open for the async .then() response
+      } else {
+        sendResponse({ isSafe: true, reason: "Could not verify against DB (API missing)" });
+        return true;
+      }
   }
 });
