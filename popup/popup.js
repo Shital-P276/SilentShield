@@ -104,3 +104,16 @@ browser.storage.local.get(['threshold', 'autoBlur', 'showConfidence']).then(data
     document.getElementById('show-confidence').checked = data.showConfidence;
   }
 });
+
+/* ── OPEN FULL DASHBOARD ── */
+
+document.getElementById('open-dashboard-btn').addEventListener('click', () => {
+  browser.windows.create({
+    url: browser.runtime.getURL('dashboard/dashboard.html'),
+    type: 'popup',
+    width: 1000,
+    height: 700,
+    left: 100,
+    top: 100
+  });
+});
