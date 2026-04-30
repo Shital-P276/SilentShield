@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "SilentShield - AI Cyberbullying Protection",
+  "version": "1.0",
+  "description": "Silent protection from cyberbullying and malicious links using AI",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "192": "icons/icon-192.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "SilentShield"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.x.com/*",
+        "https://*.twitter.com/*",
+        "https://*.facebook.com/*",
+        "https://*.instagram.com/*",
+        "https://*.reddit.com/*"
+      ],
+      "js": ["content/content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://*.x.com/*",
+    "https://*.twitter.com/*",
+    "https://*.facebook.com/*",
+    "https://*.instagram.com/*",
+    "https://*.reddit.com/*"
+  ]
+}
