@@ -1,32 +1,22 @@
 {
   "manifest_version": 3,
   "name": "🛡️ SilentShield",
-  "version": "1.1",
-  "description": "AI Cyberbullying Protection Browser Extension",
-  "permissions": [
-    "storage",
-    "activeTab"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "version": "1.2",
+  "description": "AI Cyberbullying Protection with Real Transformers.js",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
-    "default_popup": "popup/popup.html",
-    "default_title": "SilentShield"
+    "default_popup": "popup/popup.html"
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://*.reddit.com/*",
-        "https://*.x.com/*",
-        "https://*.twitter.com/*"
-      ],
+      "matches": ["https://*.reddit.com/*", "https://*.x.com/*", "https://*.twitter.com/*"],
       "js": ["content/content.js"],
-      "run_at": "document_idle",
-      "all_frames": true
+      "run_at": "document_idle"
     }
   ],
   "icons": {

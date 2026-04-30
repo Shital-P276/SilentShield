@@ -1,79 +1,100 @@
-// Silent Shield Background Service Worker
-console.log('🛡️ Silent Shield: Service Worker Active');
+// background.js - SilentShield Background Service Worker with Real toxic-bert
 
-// Initialize on install/update
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    console.log('🛡️ Silent Shield: Fresh install');
+console.log('🛡️ SilentShield: Background Service Worker Active');
+
+let classifier = null;
+let modelReady = false;
+
+// Load the toxicity model
+async function loadToxicityModel() {
+  if (modelReady) return true;
+
+  try {
+    console.log('🔄 Loading Xenova/toxic-bert model...');
+
+    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+
+    classifier = await pipeline('text-classification', 'Xenova/toxic-bert', {
+      quantized: true,
+      progress_callback: (data) => {
+        if (data.status === 'ready') {
+          console.log('✅ toxic-bert model loaded successfully');
+        }
+      }
+    });
+
+    modelReady = true;
+    chrome.storage.local.set({ modelReady: true });
+    console.log('🚀 SilentShield AI Model Ready');
+    return true;
+
+  } catch (error) {
+    console.error('❌ Failed to load toxic-bert model:', error);
+    return false;
   }
-  
-  // Create context menu for text selection
-  chrome.contextMenus.create({
-    id: "silentShieldAnalyze",
-    title: "🛡️ Silent Shield: Scan Selection",
-    contexts: ["selection"],
-    documentUrlPatterns: ["<all_urls>"]
-  }, () => {
-    if (chrome.runtime.lastError) {
-      console.error('Context menu failed:', chrome.runtime.lastError);
-    }
-  });
-});
+}
 
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "silentShieldAnalyze") {
-    // Notify popup/content script
-    chrome.tabs.sendMessage(tab.id, {
-      action: "silentShieldScan",
-      text: info.selectionText,
-      tabId: tab.id
-    });
-    
-    // Visual feedback
-    chrome.action.setBadgeText({ 
-      text: 'AI', 
-      tabId: tab.id 
-    });
-    chrome.action.setBadgeBackgroundColor({ 
-      color: '#ff6b6b', 
-      tabId: tab.id 
-    });
-    
-    setTimeout(() => {
-      chrome.action.setBadgeText({ text: '' });
-    }, 3000);
-  }
-});
-
-// Message listener for popup/content scripts
+// Message handler
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  switch (request.action) {
-    case 'getShieldStatus':
-      chrome.storage.local.get([
-        'modelReady', 
-        'scanCount', 
-        'shieldActive'
-      ], (result) => {
-        sendResponse({
-          modelReady: result.modelReady || false,
-          scanCount: result.scanCount || 0,
-          shieldActive: result.shieldActive !== false
-        });
-      });
-      return true; // Async response
-      
-    case 'updateStats':
-      chrome.storage.local.set({
-        scanCount: (request.scanCount || 0),
-        lastScan: Date.now()
-      });
-      break;
-      
-    case 'toggleShield':
-      chrome.storage.local.set({
-        shieldActive: request.active
-      });
-      break;
+  if (request.action === "ANALYZE_TOXICITY") {
+    handleToxicityAnalysis(request.text, sendResponse);
+    return true; // Keep message channel open for async response
+  }
+
+  // Existing handlers
+  if (request.action === 'getShieldStatus') {
+    sendResponse({
+      modelReady: modelReady,
+      scanCount: 0 // can be expanded later
+    });
+    return true;
   }
 });
+
+async function handleToxicityAnalysis(text, sendResponse) {
+  if (!text || text.length < 10) {
+    sendResponse({ score: 0 });
+    return;
+  }
+
+  // Ensure model is loaded
+  if (!classifier) {
+    const loaded = await loadToxicityModel();
+    if (!loaded) {
+      // Fallback to simple keyword score
+      const fallbackScore = getKeywordScore(text);
+      sendResponse({ score: fallbackScore });
+      return;
+    }
+  }
+
+  try {
+    const results = await classifier(text, { top_k: null });
+    // Find the 'toxic' label score
+    const toxicResult = results.find(r => r.label.toLowerCase().includes('toxic')) || results[0];
+    const score = toxicResult.score || 0;
+
+    console.log(`AI Analysis: "${text.substring(0, 60)}..." → Score: ${(score*100).toFixed(1)}%`);
+    sendResponse({ score: score });
+
+  } catch (error) {
+    console.error('Inference error:', error);
+    sendResponse({ score: getKeywordScore(text) });
+  }
+}
+
+// Simple keyword fallback
+function getKeywordScore(text) {
+  const lower = text.toLowerCase();
+  let score = 0.1;
+  const badWords = ["fuck","fucking","shit","bitch","asshole","cunt","kys","retard"];
+  badWords.forEach(word => {
+    if (lower.includes(word)) score += 0.35;
+  });
+  return Math.min(0.95, score);
+}
+
+// Initialize model on startup
+loadToxicityModel();
+
+console.log('🛡️ SilentShield Background initialized');
