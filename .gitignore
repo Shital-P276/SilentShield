@@ -1,1 +1,5 @@
 config.js
+silent_shield_app/.env
+silent_shield_app/build/
+silent_shield_app/.dart_tool/
+silent_shield_app/pubcache/
