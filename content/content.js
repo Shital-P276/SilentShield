@@ -1,6 +1,4 @@
-
-
-// content/content.js - SilentShield v4.3 Aggressive (Working Base)
+// content/content.js - SilentShield v4.3 with Firebase Sync
 let threshold = 0.75;
 let autoBlurEnabled = true;
 
@@ -10,11 +8,219 @@ let inferenceCount = 0;
 let detectedHistory = [];
 let dailyTrends = {};
 
+// Firebase state
+let firebaseUID = null;
+let firebaseSyncEnabled = false;
+let pendingFirebaseUpdates = [];
+let syncDebounceTimer = null;
+
 const CATEGORIES = {
   toxic: { keywords: ['fuck','shit','bitch','asshole','stupid','idiot','worthless','loser','terrible','garbage'], weight: 0.35 },
   hate: { keywords: ['hate','nigger','faggot','cunt','retard','kys','kill yourself'], weight: 0.40 },
   harassment: { keywords: ['kill','die','hurt','attack','find you','watch your back','threat','regret'], weight: 0.35 }
 };
+
+// ==========================================
+// Firebase Auth & Sync
+// ==========================================
+
+/**
+ * Load Firebase credentials from chrome.storage (set after user logs in via popup/dashboard).
+ * The dashboard writes { firebaseUID, firebaseToken, firebaseSyncEnabled } after successful login.
+ */
+async function loadFirebaseAuth() {
+  const data = await chrome.storage.local.get([
+    'firebaseUID',
+    'firebaseToken',
+    'firebaseSyncEnabled'
+  ]);
+  firebaseUID = data.firebaseUID || null;
+  firebaseSyncEnabled = data.firebaseSyncEnabled === true && !!firebaseUID;
+  console.log(
+    firebaseSyncEnabled
+      ? `🔥 SilentShield: Firebase sync enabled for UID ${firebaseUID}`
+      : '📴 SilentShield: Firebase sync disabled (not logged in)'
+  );
+}
+
+/**
+ * Build the Firestore REST URL for the user's dashboard/summary document.
+ * Path: users/{uid}/dashboard/summary
+ */
+function getProjectId() {
+  // Firebase project ID - must match firebase-config.js
+  return 'silentshield-39e11';
+}
+
+function getDashboardDocUrl() {
+  const PROJECT_ID = getProjectId();
+  return `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${firebaseUID}/dashboard/summary`;
+}
+
+/**
+ * Build the Firestore REST URL for a detection entry sub-collection.
+ * Path: users/{uid}/detections/{detectionId}
+ */
+function getDetectionDocUrl(detectionId) {
+  const PROJECT_ID = getProjectId();
+  return `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${firebaseUID}/detections/${detectionId}`;
+}
+
+/**
+ * Get the current Firebase ID token. The dashboard stores it after login.
+ * Tokens expire after 1 hour — the dashboard is responsible for refreshing.
+ */
+async function getFirebaseToken() {
+  const data = await chrome.storage.local.get(['firebaseToken']);
+  return data.firebaseToken || null;
+}
+
+/**
+ * Convert a plain JS object to Firestore REST field value format.
+ */
+function toFirestoreFields(obj) {
+  const fields = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'number') {
+      fields[key] = { integerValue: String(Math.round(value)) };
+    } else if (typeof value === 'string') {
+      fields[key] = { stringValue: value };
+    } else if (typeof value === 'boolean') {
+      fields[key] = { booleanValue: value };
+    } else if (value === null || value === undefined) {
+      fields[key] = { nullValue: null };
+    }
+  }
+  return fields;
+}
+
+/**
+ * PATCH the dashboard/summary document with aggregated stats.
+ * Uses Firestore REST PATCH with updateMask to only update specific fields.
+ */
+async function syncDashboardToFirebase() {
+  if (!firebaseSyncEnabled || !firebaseUID) return;
+
+  const token = await getFirebaseToken();
+  if (!token) {
+    console.warn('⚠️ SilentShield: No Firebase token available, skipping sync');
+    return;
+  }
+
+  // Calculate safety score
+  let safetyScore = 94;
+  if (inferenceCount > 0) {
+    const threatRatio = toxicCount / inferenceCount;
+    safetyScore = Math.max(50, Math.round(100 - threatRatio * 100));
+  }
+
+  // Calculate risk level
+  let riskLevel = 'low';
+  if (safetyScore < 50) riskLevel = 'high';
+  else if (safetyScore < 75) riskLevel = 'elevated';
+
+  const payload = {
+    fields: toFirestoreFields({
+      safetyScore,
+      toxicDetected: toxicCount,
+      autoBlurred: blurCount,
+      inferences: inferenceCount,
+      activeDays: Math.max(
+        1,
+        Math.floor((Date.now() - (await getInstallDate())) / (1000 * 60 * 60 * 24))
+      ),
+      riskLevel,
+      lastSyncedAt: Date.now()
+    })
+  };
+
+  // Fields to update (updateMask prevents overwriting createdAt etc.)
+  const updateMask =
+    'safetyScore,toxicDetected,autoBlurred,inferences,activeDays,riskLevel,lastSyncedAt';
+
+  try {
+    const res = await fetch(`${getDashboardDocUrl()}?updateMask.fieldPaths=${updateMask.split(',').join('&updateMask.fieldPaths=')}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.error('🔥 Firestore PATCH failed:', err);
+    } else {
+      console.log('✅ SilentShield: Dashboard synced to Firebase');
+    }
+  } catch (e) {
+    console.error('🔥 SilentShield Firebase sync error:', e);
+  }
+}
+
+/**
+ * Write a single detection event to users/{uid}/detections/{id}.
+ */
+async function syncDetectionToFirebase(detection) {
+  if (!firebaseSyncEnabled || !firebaseUID) return;
+
+  const token = await getFirebaseToken();
+  if (!token) return;
+
+  // Only sync the fields we want — strip locally-only fields
+  const payload = {
+    fields: toFirestoreFields({
+      text: detection.text.substring(0, 300), // cap at 300 chars
+      category: detection.category,
+      confidence: detection.confidence,
+      score: detection.score,
+      source: detection.source,
+      timestamp: detection.timestamp,
+      action: detection.action,
+      blurred: detection.blurred ? 1 : 0
+    })
+  };
+
+  const docId = String(detection.id).replace('.', '_'); // Firestore IDs can't have dots
+
+  try {
+    const res = await fetch(getDetectionDocUrl(docId), {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.error('🔥 Firestore detection write failed:', err);
+    }
+  } catch (e) {
+    console.error('🔥 SilentShield detection sync error:', e);
+  }
+}
+
+/**
+ * Debounced dashboard sync — batches rapid updates into one write.
+ */
+function scheduleDashboardSync() {
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    syncDashboardToFirebase();
+  }, 3000); // wait 3s after last detection before syncing
+}
+
+async function getInstallDate() {
+  const data = await chrome.storage.local.get(['installDate']);
+  return data.installDate || Date.now();
+}
+
+// ==========================================
+// Settings
+// ==========================================
 
 async function loadSettings() {
   const data = await chrome.storage.local.get(['threshold', 'autoBlur']);
@@ -22,7 +228,9 @@ async function loadSettings() {
   if (data.autoBlur !== undefined) autoBlurEnabled = data.autoBlur;
 }
 
-const toxicKeywords = ["fuck","fucking","fucked","shit","bitch","asshole","cunt","dick","pussy","retard","faggot","kys","kill yourself","stfu","slut","whore"];
+// ==========================================
+// Detection Logic (unchanged from original)
+// ==========================================
 
 function calculateToxicityScore(text) {
   if (!text || text.length < 20) return 0;
@@ -30,7 +238,6 @@ function calculateToxicityScore(text) {
   let score = 0.15;
   let categoryScores = { toxic: 0, hate: 0, harassment: 0 };
 
-  // Check each category
   for (const [cat, data] of Object.entries(CATEGORIES)) {
     data.keywords.forEach(word => {
       if (lower.includes(word)) {
@@ -40,11 +247,9 @@ function calculateToxicityScore(text) {
     });
   }
 
-  // Additional heuristics
   if (text.length < 150 && /fuck|kys|retard|bitch/i.test(lower)) score += 0.4;
   if (text.length > 300) score *= 0.7;
 
-  // Determine primary category
   let primaryCategory = 'toxic';
   let maxCatScore = categoryScores.toxic;
   for (const [cat, catScore] of Object.entries(categoryScores)) {
@@ -64,10 +269,8 @@ function calculateToxicityScore(text) {
 function findComments() {
   const candidates = [];
 
-  // Primary targets
   document.querySelectorAll('shreddit-comment').forEach(el => candidates.push(el));
 
-  // Shadow DOM support
   document.querySelectorAll('shreddit-comment').forEach(comment => {
     if (comment.shadowRoot) {
       const walker = document.createTreeWalker(comment.shadowRoot, NodeFilter.SHOW_TEXT, null, false);
@@ -81,12 +284,10 @@ function findComments() {
     }
   });
 
-  // Fallbacks
   document.querySelectorAll('div[id^="t1_"], faceplate-comment, article').forEach(el => {
     if (!candidates.includes(el)) candidates.push(el);
   });
 
-  // Broad fallback
   document.querySelectorAll('p, div').forEach(el => {
     const text = (el.innerText || '').trim();
     if (text.length > 50 && text.length < 700) {
@@ -138,7 +339,6 @@ function protectComment(element) {
     console.log(`🔴 Flagged (${score.toFixed(2)}): ${text.substring(0, 70)}...`);
     toxicCount++;
 
-    // Add to history
     const detection = {
       id: Date.now() + Math.random(),
       text: text.substring(0, 200),
@@ -152,9 +352,8 @@ function protectComment(element) {
       blurred: autoBlurEnabled
     };
     detectedHistory.unshift(detection);
-    if (detectedHistory.length > 100) detectedHistory.pop(); // Keep last 100
+    if (detectedHistory.length > 100) detectedHistory.pop();
 
-    // Update daily trends
     updateDailyTrends(result.category);
 
     element.classList.add('silentshield-toxic');
@@ -177,8 +376,15 @@ function protectComment(element) {
       element.appendChild(revealBtn);
     }
 
-    // Persist all data
+    // Persist locally first (always)
     persistData();
+
+    // Then sync to Firebase (debounced dashboard + immediate detection write)
+    if (firebaseSyncEnabled) {
+      syncDetectionToFirebase(detection);
+      scheduleDashboardSync();
+    }
+
   } else {
     updateDailyTrends('safe');
   }
@@ -207,7 +413,6 @@ function updateDailyTrends(category) {
 }
 
 async function persistData() {
-  // Get install date if not set
   const data = await chrome.storage.local.get(['installDate']);
   const installDate = data.installDate || Date.now();
 
@@ -222,6 +427,28 @@ async function persistData() {
   });
 }
 
+// ==========================================
+// Listen for auth changes from dashboard
+// ==========================================
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+
+  // Re-read auth when login/logout happens from the dashboard
+  if (changes.firebaseUID || changes.firebaseSyncEnabled || changes.firebaseToken) {
+    loadFirebaseAuth().then(() => {
+      if (firebaseSyncEnabled) {
+        // Immediately push current stats on login
+        syncDashboardToFirebase();
+      }
+    });
+  }
+});
+
+// ==========================================
+// Scan Loop
+// ==========================================
+
 let timeout = null;
 function scanContent() {
   if (timeout) clearTimeout(timeout);
@@ -234,8 +461,8 @@ function scanContent() {
 
 async function init() {
   await loadSettings();
+  await loadFirebaseAuth();
 
-  // Load persisted counts
   const data = await chrome.storage.local.get([
     'toxicCount', 'blurCount', 'inferenceCount',
     'detectedHistory', 'dailyTrends', 'installDate'
@@ -251,13 +478,17 @@ async function init() {
 
   injectGlobalStyles();
 
-  console.log("%c🚀 SilentShield v4.3 - Aggressive Detection (Stable)", "color:#10b981; font-weight:bold");
+  console.log("%c🚀 SilentShield v4.3 - Firebase Edition", "color:#10b981; font-weight:bold");
 
   setTimeout(scanContent, 1500);
   setInterval(scanContent, 5000);
+
+  // Periodic Firebase dashboard sync every 5 minutes
+  setInterval(() => {
+    if (firebaseSyncEnabled) syncDashboardToFirebase();
+  }, 5 * 60 * 1000);
 
   new MutationObserver(scanContent).observe(document.body, { childList: true, subtree: true });
 }
 
 init();
-

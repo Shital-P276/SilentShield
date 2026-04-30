@@ -1076,6 +1076,450 @@
   }
 
   // ==========================================
+  // Firebase Auth
+  // ==========================================
+  let currentUser = null;
+  let isLoginTab = true; // true = sign in, false = sign up
+
+  // Auth UI elements
+  const authElements = {
+    tabSignin: document.getElementById('auth-tab-signin'),
+    tabSignup: document.getElementById('auth-tab-signup'),
+    emailInput: document.getElementById('auth-email'),
+    passwordInput: document.getElementById('auth-password'),
+    confirmPasswordInput: document.getElementById('auth-confirm-password'),
+    submitBtn: document.getElementById('auth-submit-btn'),
+    errorDiv: document.getElementById('auth-error'),
+    stateLoggedOut: document.getElementById('state-logged-out'),
+    stateLoggedIn: document.getElementById('state-logged-in'),
+    profileAvatar: document.getElementById('profile-avatar'),
+    profileName: document.getElementById('profile-name'),
+    profileEmail: document.getElementById('profile-email'),
+    syncBadge: document.getElementById('sync-badge'),
+    syncBadgeLabel: document.getElementById('sync-badge-label'),
+    syncLastTime: document.getElementById('sync-last-time'),
+    syncNowBtn: document.getElementById('sync-now-btn'),
+    signoutBtn: document.getElementById('auth-signout-btn')
+  };
+
+  function initAuthListeners() {
+    // Tab switching
+    authElements.tabSignin?.addEventListener('click', () => switchAuthTab('signin'));
+    authElements.tabSignup?.addEventListener('click', () => switchAuthTab('signup'));
+
+    // Form submission
+    authElements.submitBtn?.addEventListener('click', handleAuthSubmit);
+
+    // Sign out
+    authElements.signoutBtn?.addEventListener('click', handleSignOut);
+
+    // Sync now
+    authElements.syncNowBtn?.addEventListener('click', handleSyncNow);
+
+    // Enter key on password field
+    authElements.passwordInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAuthSubmit();
+    });
+    authElements.confirmPasswordInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAuthSubmit();
+    });
+
+    // Listen for auth state changes from other tabs
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local') return;
+      if (changes.firebaseUID || changes.firebaseToken || changes.firebaseSyncEnabled) {
+        checkAuthState();
+      }
+    });
+  }
+
+  function switchAuthTab(tab) {
+    isLoginTab = tab === 'signin';
+    authElements.tabSignin?.classList.toggle('active', isLoginTab);
+    authElements.tabSignup?.classList.toggle('active', !isLoginTab);
+
+    if (authElements.confirmPasswordInput) {
+      authElements.confirmPasswordInput.style.display = isLoginTab ? 'none' : 'block';
+    }
+    if (authElements.submitBtn) {
+      authElements.submitBtn.textContent = isLoginTab ? 'Sign In' : 'Create Account';
+    }
+    hideAuthError();
+  }
+
+  function showAuthError(message) {
+    if (authElements.errorDiv) {
+      authElements.errorDiv.textContent = message;
+      authElements.errorDiv.classList.add('visible');
+    }
+  }
+
+  function hideAuthError() {
+    if (authElements.errorDiv) {
+      authElements.errorDiv.textContent = '';
+      authElements.errorDiv.classList.remove('visible');
+    }
+  }
+
+  function setLoading(loading) {
+    if (authElements.submitBtn) {
+      authElements.submitBtn.disabled = loading;
+      if (loading) {
+        authElements.submitBtn.innerHTML = '<span class="spin-icon">↻</span> Please wait...';
+      } else {
+        authElements.submitBtn.textContent = isLoginTab ? 'Sign In' : 'Create Account';
+      }
+    }
+  }
+
+  async function handleAuthSubmit() {
+    const email = authElements.emailInput?.value.trim() || '';
+    const password = authElements.passwordInput?.value || '';
+    const confirmPassword = authElements.confirmPasswordInput?.value || '';
+
+    if (!email || !password) {
+      showAuthError('Please enter both email and password');
+      return;
+    }
+
+    if (!isLoginTab && password !== confirmPassword) {
+      showAuthError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      showAuthError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    hideAuthError();
+
+    try {
+      if (isLoginTab) {
+        // Sign in
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        await handleAuthSuccess(userCredential.user);
+      } else {
+        // Sign up
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        await handleAuthSuccess(userCredential.user);
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      let message = 'Authentication failed';
+      switch (error.code) {
+        case 'auth/invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'auth/user-not-found':
+          message = 'No account found with this email';
+          break;
+        case 'auth/wrong-password':
+          message = 'Incorrect password';
+          break;
+        case 'auth/email-already-in-use':
+          message = 'An account already exists with this email';
+          break;
+        case 'auth/weak-password':
+          message = 'Password is too weak';
+          break;
+        case 'auth/invalid-credential':
+          message = 'Invalid email or password';
+          break;
+        default:
+          message = error.message || 'Authentication failed';
+      }
+      showAuthError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAuthSuccess(user) {
+    currentUser = user;
+
+    // Get ID token
+    const token = await user.getIdToken();
+
+    // Store auth data for content.js to use
+    await chrome.storage.local.set({
+      firebaseUID: user.uid,
+      firebaseToken: token,
+      firebaseSyncEnabled: true,
+      firebaseEmail: user.email,
+      firebaseDisplayName: user.displayName || user.email?.split('@')[0] || 'User'
+    });
+
+    updateAuthUI(user);
+    hideAuthError();
+
+    // Clear form
+    if (authElements.emailInput) authElements.emailInput.value = '';
+    if (authElements.passwordInput) authElements.passwordInput.value = '';
+    if (authElements.confirmPasswordInput) authElements.confirmPasswordInput.value = '';
+
+    // Trigger initial sync
+    await handleSyncNow();
+  }
+
+  async function handleSignOut() {
+    try {
+      await firebase.auth().signOut();
+      currentUser = null;
+
+      // Clear stored auth data
+      await chrome.storage.local.set({
+        firebaseUID: null,
+        firebaseToken: null,
+        firebaseSyncEnabled: false
+      });
+
+      updateAuthUI(null);
+    } catch (error) {
+      console.error('Sign out error:', error);
+      showAuthError('Failed to sign out');
+    }
+  }
+
+  async function handleSyncNow() {
+    if (!currentUser) return;
+
+    const btn = authElements.syncNowBtn;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spin-icon">↻</span> Syncing...';
+    }
+
+    try {
+        // Refresh token
+        const token = await currentUser.getIdToken(true);
+        await chrome.storage.local.set({ firebaseToken: token });
+
+        // Get all relevant data from local storage
+        const data = await chrome.storage.local.get([
+            'toxicCount', 
+            'blurCount', 
+            'inferenceCount', 
+            'installDate',
+            'detectedHistory',
+            'dailyTrends'
+        ]);
+
+        const toxicCount = data.toxicCount || 0;
+        const blurCount = data.blurCount || 0;
+        const inferenceCount = data.inferenceCount || 0;
+        const detectedHistory = data.detectedHistory || [];
+        const dailyTrends = data.dailyTrends || {};
+
+        // Calculate safety score
+        let safetyScore = 94;
+        if (inferenceCount > 0) {
+            const threatRatio = toxicCount / inferenceCount;
+            safetyScore = Math.max(50, Math.round(100 - threatRatio * 100));
+        }
+
+        let riskLevel = 'low';
+        if (safetyScore < 50) riskLevel = 'high';
+        else if (safetyScore < 75) riskLevel = 'elevated';
+
+        const installDate = data.installDate || Date.now();
+        const activeDays = Math.max(1, Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24)));
+
+        const projectId = 'silentshield-39e11';
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${currentUser.uid}/dashboard/summary`;
+
+        // Updated payload with history items included
+        const payload = {
+            fields: {
+                safetyScore: { integerValue: String(safetyScore) },
+                toxicDetected: { integerValue: String(toxicCount) },
+                autoBlurred: { integerValue: String(blurCount) },
+                inferences: { integerValue: String(inferenceCount) },
+                activeDays: { integerValue: String(activeDays) },
+                riskLevel: { stringValue: riskLevel },
+                lastSyncedAt: { integerValue: String(Date.now()) },
+                
+                // === Added/Improved Fields ===
+                toxicCount: { integerValue: String(toxicCount) },
+                blurCount: { integerValue: String(blurCount) },
+                inferenceCount: { integerValue: String(inferenceCount) },
+                installDate: { integerValue: String(installDate) },
+                
+                // History items (array)
+                detectedHistory: {
+                    arrayValue: {
+                        values: detectedHistory.map(item => ({
+                            mapValue: {
+                                fields: {
+                                    id: { stringValue: String(item.id || Date.now()) },
+                                    text: { stringValue: item.text || '' },
+                                    category: { stringValue: item.category || 'toxic' },
+                                    confidence: { stringValue: item.confidence || '' },
+                                    score: { doubleValue: item.score || 0 },
+                                    source: { stringValue: item.source || 'Unknown' },
+                                    action: { stringValue: item.action || 'Detected' },
+                                    timestamp: { integerValue: String(item.timestamp || Date.now()) }
+                                }
+                            }
+                        }))
+                    }
+                },
+
+                // Daily trends
+                dailyTrends: {
+                    mapValue: {
+                        fields: Object.keys(dailyTrends).reduce((acc, date) => {
+                            acc[date] = {
+                                mapValue: {
+                                    fields: {
+                                        toxic: { integerValue: String(dailyTrends[date].toxic || 0) },
+                                        suspicious: { integerValue: String(dailyTrends[date].suspicious || 0) },
+                                        safe: { integerValue: String(dailyTrends[date].safe || 0) }
+                                    }
+                                }
+                            };
+                            return acc;
+                        }, {})
+                    }
+                }
+            }
+        };
+
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Sync failed: ${response.status} - ${errorText}`);
+        }
+
+        // Success
+        updateSyncTime(Date.now());
+        console.log('✅ Dashboard + History synced to Firebase successfully');
+
+    } catch (error) {
+        console.error('Sync error:', error);
+        if (authElements.syncBadgeLabel) {
+            authElements.syncBadgeLabel.textContent = 'Sync failed';
+        }
+        if (authElements.syncBadge) {
+            authElements.syncBadge.classList.remove('sync-badge');
+            authElements.syncBadge.classList.add('sync-badge-off');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Sync Now
+            `;
+        }
+    }
+}
+
+  function updateSyncTime(timestamp) {
+    if (authElements.syncLastTime) {
+      const date = new Date(timestamp);
+      authElements.syncLastTime.textContent = 'Last sync: ' + date.toLocaleTimeString();
+    }
+    if (authElements.syncBadge) {
+      authElements.syncBadge.classList.remove('sync-badge-off');
+      authElements.syncBadge.classList.add('sync-badge');
+    }
+    if (authElements.syncBadgeLabel) {
+      authElements.syncBadgeLabel.textContent = 'Cloud sync active';
+    }
+  }
+
+  function updateAuthUI(user) {
+    if (!authElements.stateLoggedOut || !authElements.stateLoggedIn) return;
+
+    if (user) {
+      // Show logged-in state
+      authElements.stateLoggedOut.classList.remove('active');
+      authElements.stateLoggedIn.classList.add('active');
+
+      // Update profile info
+      const displayName = user.displayName || user.email?.split('@')[0] || 'User';
+      const initials = displayName.substring(0, 2).toUpperCase();
+
+      if (authElements.profileAvatar) {
+        authElements.profileAvatar.textContent = initials;
+      }
+      if (authElements.profileName) {
+        authElements.profileName.textContent = displayName;
+      }
+      if (authElements.profileEmail) {
+        authElements.profileEmail.textContent = user.email || '';
+      }
+
+      // Update sync status
+      updateSyncTime(Date.now());
+    } else {
+      // Show logged-out state
+      authElements.stateLoggedOut.classList.add('active');
+      authElements.stateLoggedIn.classList.remove('active');
+
+      // Clear profile info
+      if (authElements.profileAvatar) authElements.profileAvatar.textContent = '?';
+      if (authElements.profileName) authElements.profileName.textContent = '—';
+      if (authElements.profileEmail) authElements.profileEmail.textContent = '—';
+      if (authElements.syncLastTime) authElements.syncLastTime.textContent = '—';
+      if (authElements.syncBadgeLabel) authElements.syncBadgeLabel.textContent = 'Not synced';
+      if (authElements.syncBadge) {
+        authElements.syncBadge.classList.remove('sync-badge');
+        authElements.syncBadge.classList.add('sync-badge-off');
+      }
+    }
+  }
+
+  async function checkAuthState() {
+    // Check if Firebase is initialized
+    if (typeof firebase === 'undefined' || !firebase.auth) {
+      console.warn('Firebase not available - waiting for SDK to load...');
+      // Retry after a short delay
+      setTimeout(checkAuthState, 500);
+      return;
+    }
+
+    // Listen to auth state changes
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        // Refresh token
+        const token = await user.getIdToken();
+        await chrome.storage.local.set({
+          firebaseUID: user.uid,
+          firebaseToken: token,
+          firebaseSyncEnabled: true
+        });
+        updateAuthUI(user);
+      } else {
+        currentUser = null;
+        updateAuthUI(null);
+      }
+    });
+
+    // Also check stored auth state
+    const stored = await chrome.storage.local.get(['firebaseUID', 'firebaseSyncEnabled']);
+    if (stored.firebaseUID && stored.firebaseSyncEnabled) {
+      // User should be signed in, Firebase will verify via onAuthStateChanged
+      console.log('Found stored auth state for UID:', stored.firebaseUID);
+    }
+  }
+
+  // ==========================================
   // Initialize
   // ==========================================
   async function init() {
@@ -1087,6 +1531,10 @@
     renderHistory();
     updateCharCount();
     initEventListeners();
+    initAuthListeners();
+
+    // Initialize Firebase auth
+    await checkAuthState();
 
     // Render chart after a short delay to ensure canvas is ready
     setTimeout(renderChart, 100);
@@ -1104,6 +1552,19 @@
         updateSafetyScore();
       }
     }, 30000);
+
+    // Periodic token refresh every 50 minutes (tokens expire after 1 hour)
+    setInterval(async () => {
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdToken(true);
+          await chrome.storage.local.set({ firebaseToken: token });
+          console.log('Token refreshed');
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+        }
+      }
+    }, 50 * 60 * 1000);
   }
 
   // Start the dashboard
