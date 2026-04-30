@@ -1,9 +1,18 @@
 {
   "manifest_version": 3,
   "name": "🛡️ Silent Shield AI Pro",
-  "version": "1.5",
-  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
-  "host_permissions": ["<all_urls>"],
+  "version": "1.6",
+  "permissions": [
+    "storage", 
+    "activeTab", 
+    "scripting", 
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "*://*.reddit.com/*",
+    "<all_urls>",
+    "*://*.twitter.com/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -16,7 +25,8 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["content.css"],
-      "run_at": "document_end"
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "content_security_policy": {

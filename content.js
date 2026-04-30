@@ -1,62 +1,107 @@
+// --- CONFIGURATION ---
 const SUBSTRING_LIST = ["fuck", "bitch", "asshole", "shit", "cunt", "nude", "porn", "naked"];
+let isModalOpen = false;
 
+/**
+ * Triggers the authoritative voice warning.
+ */
 function speak(msg) {
+  if (window.speechSynthesis.speaking) return; 
   const utterance = new SpeechSynthesisUtterance(msg);
   utterance.rate = 0.85;
   window.speechSynthesis.speak(utterance);
 }
 
-// NEW: Function to create an attractive custom modal
-function showAttractiveWarning() {
-  // Remove existing modal if it exists
-  const existing = document.getElementById('shield-warning-modal');
-  if (existing) existing.remove();
-
+/**
+ * Injects and manages the Attractive Warning Modal.
+ * State-managed to ensure it remains visible and persistent.
+ */
+window.showAttractiveWarning = function() {
+  if (document.getElementById('shield-warning-modal')) return;
+  
+  isModalOpen = true; 
   const modal = document.createElement('div');
   modal.id = 'shield-warning-modal';
+  
   modal.innerHTML = `
     <div class="shield-modal-content">
       <div class="shield-icon">🛡️</div>
-      <h2>Content Blocked</h2>
-      <p>Silent Shield AI has identified and obscured abusive material on this page to protect your browsing experience.</p>
-      <button id="close-shield-modal">Dismiss</button>
+      <div class="shield-text-wrapper">
+        <h2 class="shield-title">CONTENT BLOCKED</h2>
+        <p class="shield-description">
+          Specific restricted elements have been obscured to protect your experience while keeping the layout intact.
+        </p>
+      </div>
+      <button id="close-shield-modal">Dismiss Warning</button>
     </div>
   `;
   document.body.appendChild(modal);
 
-  document.getElementById('close-shield-modal').onclick = () => {
+  document.getElementById('close-shield-modal').onclick = (e) => {
+    e.stopPropagation();
     modal.style.opacity = '0';
-    setTimeout(() => modal.remove(), 300);
+    setTimeout(() => {
+        modal.remove();
+        isModalOpen = false; 
+    }, 300);
   };
-}
+};
 
+/**
+ * Surgical Shielding Engine.
+ * Targets specific text nodes to prevent "Blank Screen" syndrome.
+ */
 async function applyShield() {
-  document.querySelectorAll('p, span, h1, h2, li, img').forEach(el => {
-    const content = (el.innerText || el.alt || "").toLowerCase();
-    const hasAbuse = SUBSTRING_LIST.some(word => content.includes(word));
-    
+  if (isModalOpen) return;
+
+  // We target specific leaf-node tags instead of broad containers (like div or article)
+  // to prevent the entire layout from vanishing.
+  const targets = document.querySelectorAll(
+    'p, span, h1, h2, h3, li, a, b, strong, em, i, [data-testid="tweetText"]'
+  );
+  
+  targets.forEach(el => {
+    // Only scan the element's own text to avoid parent containers catching child keywords
+    const textToScan = el.innerText.toLowerCase();
+    const hasAbuse = SUBSTRING_LIST.some(word => textToScan.includes(word));
+
     if (hasAbuse && !el.classList.contains('silent-shield-blur')) {
       el.classList.add('silent-shield-blur');
       
-      el.onclick = (e) => {
+      el.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        speak("Warning: You are viewing abusive content.");
-        showAttractiveWarning(); // Use the new attractive modal
-      };
+        speak("Warning: This specific section contains restricted content.");
+        window.showAttractiveWarning();
+      }, true); 
     }
   });
 
-  document.querySelectorAll('img:not([data-shield-checked])').forEach(img => {
-    img.dataset.shieldChecked = "pending";
-    chrome.runtime.sendMessage({ action: "analyzeImage", imgUrl: img.src }, (res) => {
-      if (res && res.isExplicit) {
-        img.classList.add('silent-shield-blur');
-      }
-      img.dataset.shieldChecked = "true";
-    });
+  // Media Analysis
+  document.querySelectorAll('img:not([data-shield-checked]), video:not([data-shield-checked])').forEach(media => {
+    media.dataset.shieldChecked = "pending";
+    const mediaUrl = media.tagName === 'VIDEO' ? media.poster : media.src;
+    
+    // Simple substring check for media as well
+    const mediaInfo = (media.alt + mediaUrl).toLowerCase();
+    if (SUBSTRING_LIST.some(word => mediaInfo.includes(word))) {
+        media.classList.add('silent-shield-blur');
+    }
+
+    if (mediaUrl && mediaUrl.startsWith('http')) {
+      chrome.runtime.sendMessage({ action: "analyzeImage", imgUrl: mediaUrl }, (res) => {
+        if (res && res.isExplicit) {
+          media.classList.add('silent-shield-blur');
+        }
+        media.dataset.shieldChecked = "true";
+      });
+    }
   });
 }
+
+// Monitoring Systems
+const observer = new MutationObserver(() => applyShield());
+observer.observe(document.documentElement, { childList: true, subtree: true });
 
 document.addEventListener('input', (e) => {
   const text = e.target.value?.toLowerCase() || "";
@@ -65,4 +110,5 @@ document.addEventListener('input', (e) => {
   }
 });
 
-setInterval(applyShield, 1500);
+setInterval(applyShield, 2000);
+applyShield();

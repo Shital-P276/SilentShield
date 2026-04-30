@@ -1,93 +1,103 @@
-/* The Safe Search Deep Blur Effect */
+/* --- 1. SURGICAL SHIELD ENGINE --- */
 .silent-shield-blur {
-  filter: blur(65px) brightness(0.2) grayscale(100%) !important;
-  transition: filter 0.5s ease !important;
-  pointer-events: auto !important; /* Required to trigger voice warning on click */
+  /* Reduced blur from 35px to 12px: Keeps layout 'lines' and context visible while hiding specific words */
+  filter: blur(12px) brightness(0.9) grayscale(50%) !important;
+  transition: filter 0.3s ease-in-out !important;
+  pointer-events: auto !important; 
   user-select: none !important;
   position: relative !important;
-  min-height: 20px;
-  min-width: 20px;
-  display: inline-block;
+  /* Maintains the element's space in the grid to prevent 'blank' gaps */
+  display: inline-block !important; 
+  overflow: hidden !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
-/* Visual indicator that content is shielded */
+/* Specific Shielded Overlay - Reduced size for surgical precision */
 .silent-shield-blur::after {
-  content: "🛡️ SHIELDED";
+  content: "🛡️";
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  color: white;
-  font-family: 'Segoe UI', sans-serif;
-  font-weight: bold;
-  font-size: 14px;
-  text-shadow: 0px 0px 5px rgba(0,0,0,0.5);
-  z-index: 9999;
+  font-size: 14px !important;
   filter: none !important;
+  z-index: 10 !important;
   pointer-events: none;
 }
 
-/* Scanning state indicator (optional) */
-.silent-shield-scanning {
-  border: 1px solid rgba(52, 152, 219, 0.3);
-}
-/* Custom Warning Modal Styling */
+/* --- 2. MODAL VISIBILITY & PERSISTENCE --- */
 #shield-warning-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000000;
-  transition: opacity 0.3s ease;
+  position: fixed !important;
+  inset: 0 !important;
+  /* Slightly more transparent background to keep page context visible behind the modal */
+  background: rgba(0, 0, 0, 0.9) !important; 
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  z-index: 2147483647 !important; 
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .shield-modal-content {
-  background: #1a1a1a;
-  border: 2px solid #3498db;
-  border-radius: 15px;
-  padding: 30px;
-  text-align: center;
-  max-width: 400px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  font-family: 'Segoe UI', Roboto, sans-serif;
-  color: white;
+  background: #121212 !important;
+  border: 2px solid #ff4757 !important; 
+  border-radius: 20px !important;
+  padding: 40px !important;
+  text-align: center !important;
+  max-width: 420px !important;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8) !important;
+  /* CRITICAL: Ensures the warning text itself is never blurred */
+  filter: none !important; 
+  animation: modalFadeIn 0.3s ease-out !important;
 }
 
-.shield-icon {
-  font-size: 50px;
-  margin-bottom: 15px;
+@keyframes modalFadeIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-.shield-modal-content h2 {
-  color: #3498db;
-  margin: 0 0 10px 0;
-  font-size: 24px;
+.shield-title {
+  color: #ff4757 !important;
+  font-size: 26px !important;
+  font-weight: 900 !important;
+  margin-bottom: 12px !important;
+  display: block !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
 }
 
-.shield-modal-content p {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #ccc;
-  margin-bottom: 20px;
+.shield-description {
+  color: #dcdde1 !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  margin-bottom: 25px !important;
+  display: block !important;
 }
 
 #close-shield-modal {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 10px 25px;
-  border-radius: 5px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background 0.2s;
+  background: #ff4757 !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 12px 35px !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
 }
 
-#close-shield-modal:hover {
-  background: #2980b9;
+#close-shield-modal:hover { 
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 71, 87, 0.3);
+}
+
+/* --- 3. PLATFORM OVERRIDES (Twitter/X, Reddit) --- */
+/* Ensure layout blocks remain visible but content inside is shielded */
+[data-testid="tweetText"].silent-shield-blur,
+[data-testid="post-container"].silent-shield-blur,
+shreddit-post.silent-shield-blur {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 12px !important;
+  border-radius: 12px !important;
 }
