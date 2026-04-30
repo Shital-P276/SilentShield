@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="link-popup.css">  <!-- ✅ CSS LINKED -->
+</head>
+<body>
+  <div class="header">
+    <div class="logo">🔗</div>
+    <h2>LinkGuard</h2>
+    <div id="status">Ready to scan</div>
+  </div>
+  
+  <input id="urlInput" type="url" placeholder="https://suspect-link.com">
+  <button id="scanBtn">🛡️ SCAN URL</button>
+  
+  <div id="result" class="result" style="display:none">
+    <div class="risk-meter">
+      <div id="meterFill" class="meter-fill"></div>
+    </div>
+    <div id="riskLevel">SAFE</div>
+    <div id="riskScore">0%</div>
+    <div id="threatsList" class="threats"></div>
+  </div>
+  
+  <div id="linkScanCount">Scans: 0</div>
+
+  <script src="linkguard.js"></script>
+  <script>
+    // LinkGuard popup logic here (from previous message)
+    document.getElementById('scanBtn').onclick = async () => {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) return;
+      // ... rest of scan logic
+    };
+  </script>
+</body>
+</html>

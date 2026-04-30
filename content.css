@@ -1,0 +1,93 @@
+/* The Safe Search Deep Blur Effect */
+.silent-shield-blur {
+  filter: blur(65px) brightness(0.2) grayscale(100%) !important;
+  transition: filter 0.5s ease !important;
+  pointer-events: auto !important; /* Required to trigger voice warning on click */
+  user-select: none !important;
+  position: relative !important;
+  min-height: 20px;
+  min-width: 20px;
+  display: inline-block;
+}
+
+/* Visual indicator that content is shielded */
+.silent-shield-blur::after {
+  content: "🛡️ SHIELDED";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 0px 0px 5px rgba(0,0,0,0.5);
+  z-index: 9999;
+  filter: none !important;
+  pointer-events: none;
+}
+
+/* Scanning state indicator (optional) */
+.silent-shield-scanning {
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+/* Custom Warning Modal Styling */
+#shield-warning-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000000;
+  transition: opacity 0.3s ease;
+}
+
+.shield-modal-content {
+  background: #1a1a1a;
+  border: 2px solid #3498db;
+  border-radius: 15px;
+  padding: 30px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  color: white;
+}
+
+.shield-icon {
+  font-size: 50px;
+  margin-bottom: 15px;
+}
+
+.shield-modal-content h2 {
+  color: #3498db;
+  margin: 0 0 10px 0;
+  font-size: 24px;
+}
+
+.shield-modal-content p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #ccc;
+  margin-bottom: 20px;
+}
+
+#close-shield-modal {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#close-shield-modal:hover {
+  background: #2980b9;
+}

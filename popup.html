@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Silent Shield AI Pro</title>
+    <link rel="stylesheet" href="link-popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">🛡️</div>
+            <h1>Silent Shield AI</h1>
+            <!-- Status Badge: Indicates if the AI models are loaded or scanning -->
+            <div id="shieldStatus" class="status-badge">Initializing...</div>
+        </header>
+
+        <div class="main-ui">
+            <!-- Manual Scan Input: Supports text and substring analysis -->
+            <input type="text" id="scanInput" placeholder="Paste text or URL to scan...">
+            <button id="scanBtn">START AI SCAN</button>
+        </div>
+
+        <!-- Result Area: Restored for Risk Meter and Level display -->
+        <div id="resultArea" style="display: none;">
+            <div class="risk-meter">
+                <div id="meterFill" class="meter-fill"></div>
+            </div>
+            <p id="riskLevel">Risk Assessment: <span>Calculating...</span></p>
+            <p id="threats" class="threat-detail"></p>
+        </div>
+
+        <div class="stats">
+            <!-- Scan Count: Restored for persistent user data tracking -->
+            <p>Total Items Shielded: <span id="scanCount">0</span></p>
+        </div>
+    </div>
+    
+    <!-- Load popup.js as a module to allow AI pipeline communication -->
+    <script src="popup.js" type="module"></script>
+</body>
+</html>
