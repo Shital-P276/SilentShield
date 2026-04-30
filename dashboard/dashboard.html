@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SilentShield - Full Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-mark">
+            <svg width="18" height="18" viewBox="0 0 13 13" fill="none">
+              <path d="M6.5 1.5L11 4V8C11 10.5 9 12.5 6.5 13C4 12.5 2 10.5 2 8V4L6.5 1.5Z" stroke="#34c77b" stroke-width="1.1" stroke-linejoin="round"/>
+              <path d="M4.5 6.5L6 8L8.5 5" stroke="#34c77b" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="logo-text">SilentShield</span>
+        </div>
+        <div class="badge">
+          <div class="badge-dot"></div>
+          <span>Protected</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="overview">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Overview</span>
+        </button>
+        <button class="nav-item" data-tab="analyzer">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+          <span>Live Analyzer</span>
+        </button>
+        <button class="nav-item" data-tab="history">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>History</span>
+          <span class="nav-badge" id="history-count">0</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
+        <button class="nav-item" data-tab="about">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>About</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-label">Engine</span>
+            <span class="status-value">ONNX Runtime</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Model</span>
+            <span class="status-value">distilbert-base</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Mode</span>
+            <span class="status-value accent">CPU Inference</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="content-header">
+        <h1 class="page-title" id="page-title">Overview</h1>
+        <div class="header-actions">
+          <button class="btn-secondary" id="refresh-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
+          </button>
+          <button class="btn-primary" id="export-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export Data
+          </button>
+        </div>
+      </header>
+
+      <!-- Tab Panels -->
+      <div class="tab-content">
+        <!-- Overview Tab -->
+        <div class="tab-panel active" id="tab-overview">
+          <div class="dashboard-grid">
+            <!-- Main Score Card -->
+            <div class="card card-large">
+              <div class="card-header">
+                <h3 class="card-title">Safety Score</h3>
+                <span class="card-subtitle">Last 24 hours</span>
+              </div>
+              <div class="score-display">
+                <div class="score-circle" id="safety-score-circle">
+                  <svg viewBox="0 0 100 100">
+                    <circle class="score-circle-bg" cx="50" cy="50" r="45"></circle>
+                    <circle class="score-circle-fill" id="score-circle-fill" cx="50" cy="50" r="45"></circle>
+                  </svg>
+                  <div class="score-value">
+                    <span class="score-number" id="safety-score">94</span>
+                    <span class="score-percent">%</span>
+                  </div>
+                </div>
+                <div class="score-info">
+                  <p class="score-status safe" id="score-status">
+                    <span class="status-indicator"></span>
+                    Your feed is safe
+                  </p>
+                  <p class="score-desc">Based on analysis of recent content</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+              <div class="stat-card danger">
+                <div class="stat-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-value" id="toxic-detected">127</span>
+                  <span class="stat-label">Toxic Detected</span>
+                </div>
+              </div>
+              <div class="stat-card amber">
+                <div class="stat-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-value" id="auto-blurred">89</span>
+                  <span class="stat-label">Auto-Blurred</span>
+                </div>
+              </div>
+              <div class="stat-card accent">
+                <div class="stat-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-value" id="inferences">2.4K</span>
+                  <span class="stat-label">Inferences</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-value" id="active-days">14</span>
+                  <span class="stat-label">Active Days</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Section -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Threat Detection Trends</h3>
+              <div class="chart-legend">
+                <span class="legend-item"><span class="legend-dot danger"></span>Toxic</span>
+                <span class="legend-item"><span class="legend-dot warning"></span>Suspicious</span>
+                <span class="legend-item"><span class="legend-dot safe"></span>Safe</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="trendsChart" width="800" height="200"></canvas>
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Recent Detections</h3>
+              <button class="btn-text" data-tab="history">View All</button>
+            </div>
+            <div class="activity-list" id="recent-activity"></div>
+          </div>
+        </div>
+
+        <!-- Live Analyzer Tab -->
+        <div class="tab-panel" id="tab-analyzer">
+          <div class="analyzer-layout">
+            <div class="analyzer-input">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Text Input</h3>
+                  <span class="char-count" id="char-count">0 chars</span>
+                </div>
+                <textarea 
+                  id="analyzer-text" 
+                  class="analyzer-textarea" 
+                  placeholder="Paste or type any text to analyze for toxicity, hate speech, cyberbullying, or malicious content..."
+                  rows="8"
+                ></textarea>
+                <div class="analyzer-actions">
+                  <button class="btn-secondary" id="clear-btn">Clear</button>
+                  <button class="btn-primary btn-large" id="analyze-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    Run Analysis
+                  </button>
+                </div>
+              </div>
+
+              <div class="quick-tests">
+                <span class="quick-label">Quick Tests:</span>
+                <button class="chip" data-test="toxic">Toxic Sample</button>
+                <button class="chip" data-test="hate">Hate Speech</button>
+                <button class="chip" data-test="harassment">Harassment</button>
+                <button class="chip" data-test="safe">Safe Content</button>
+              </div>
+            </div>
+
+            <div class="analyzer-output">
+              <div class="card" id="results-card">
+                <div class="card-header">
+                  <h3 class="card-title">Analysis Results</h3>
+                  <span class="result-badge" id="result-badge">Ready</span>
+                </div>
+                <div class="analysis-content" id="analysis-content">
+                  <div class="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                    </svg>
+                    <p>Enter text and click "Run Analysis" to see results</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card categories-card" id="categories-card" style="display: none;">
+                <div class="card-header">
+                  <h3 class="card-title">Category Breakdown</h3>
+                </div>
+                <div class="category-list" id="category-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- History Tab -->
+        <div class="tab-panel" id="tab-history">
+          <div class="history-header">
+            <div class="filter-group">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="toxic">Toxic</button>
+              <button class="filter-btn" data-filter="hate">Hate Speech</button>
+              <button class="filter-btn" data-filter="harassment">Harassment</button>
+            </div>
+            <div class="search-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="history-search" placeholder="Search history...">
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="history-table-container">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Content Preview</th>
+                    <th>Category</th>
+                    <th>Confidence</th>
+                    <th>Source</th>
+                    <th>Time</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="history-tbody"></tbody>
+              </table>
+            </div>
+            <div class="history-pagination">
+              <span class="pagination-info">Showing <strong>1-10</strong> of <strong id="total-entries">47</strong> entries</span>
+              <div class="pagination-controls">
+                <button class="btn-icon" disabled>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <button class="btn-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-panel" id="tab-settings">
+          <div class="settings-layout">
+            <div class="settings-nav">
+              <button class="settings-nav-item active" data-settings="general">General</button>
+              <button class="settings-nav-item" data-settings="detection">Detection</button>
+              <button class="settings-nav-item" data-settings="privacy">Privacy</button>
+            </div>
+
+            <div class="settings-content">
+              <!-- General Settings -->
+              <div class="settings-group active" id="settings-general">
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">General Settings</h3>
+                  </div>
+                  <div class="settings-list">
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Auto-start on browser launch</span>
+                        <span class="setting-desc">Automatically activate protection when browser starts</span>
+                      </div>
+                        <label class="toggle">
+                        <input type="checkbox" id="setting-autostart" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Show notifications</span>
+                        <span class="setting-desc">Display alerts when toxic content is detected</span>
+                      </div>
+                        <label class="toggle">
+                        <input type="checkbox" id="setting-notifications" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Sound alerts</span>
+                        <span class="setting-desc">Play sound when high-toxicity content is blocked</span>
+                      </div>
+                        <label class="toggle">
+                        <input type="checkbox" id="setting-sound">
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Detection Settings -->
+              <div class="settings-group" id="settings-detection">
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">Detection Sensitivity</h3>
+                  </div>
+                  <div class="slider-setting">
+                    <div class="slider-header">
+                      <span class="slider-label">Sensitivity Threshold</span>
+                      <span class="slider-value" id="threshold-display">0.75</span>
+                    </div>
+                    <p class="slider-desc">Higher values require stronger confidence to flag content. Lower values catch more edge cases.</p>
+                    <input type="range" id="sensitivity-slider" min="0.5" max="0.95" step="0.05" value="0.75">
+                    <div class="slider-labels">
+                      <span>Strict (0.5)</span>
+                      <span>Lenient (0.95)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">Detection Categories</h3>
+                  </div>
+                  <div class="settings-list">
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Toxicity</span>
+                        <span class="setting-desc">General toxic language and negative sentiment</span>
+                      </div>
+                      <label class="toggle">
+                        <input type="checkbox" id="cat-toxicity" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Hate Speech</span>
+                        <span class="setting-desc">Content targeting groups based on identity</span>
+                      </div>
+                      <label class="toggle">
+                        <input type="checkbox" id="cat-hate" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Harassment</span>
+                        <span class="setting-desc">Direct attacks or intimidation toward individuals</span>
+                      </div>
+                      <label class="toggle">
+                        <input type="checkbox" id="cat-harassment" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Profanity</span>
+                        <span class="setting-desc">Obscene or vulgar language filtering</span>
+                      </div>
+                      <label class="toggle">
+                        <input type="checkbox" id="cat-profanity">
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">Auto-Actions</h3>
+                  </div>
+                  <div class="settings-list">
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Auto-blur toxic content</span>
+                        <span class="setting-desc">Visually hide detected toxic content</span>
+                      </div>
+                      <label class="toggle">
+                        <input type="checkbox" id="setting-autoblur" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Show confidence overlay</span>
+                        <span class="setting-desc">Display detection confidence on blurred items</span>
+                      </div>
+                      <label class="toggle">
+                        <input type="checkbox" id="setting-confidence" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              
+              <!-- Privacy Settings -->
+              <div class="settings-group" id="settings-privacy">
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">Privacy & Data</h3>
+                  </div>
+                  <div class="settings-list">
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">Store detection history</span>
+                        <span class="setting-desc">Keep local record of flagged content</span>
+                      </div>
+                      <label class="toggle">
+                        <input type="checkbox" id="setting-store-history" checked>
+                        <div class="t-track"></div>
+                        <div class="t-thumb"></div>
+                      </label>
+                    </div>
+                    <div class="setting-item">
+                      <div class="setting-info">
+                        <span class="setting-name">History retention</span>
+                        <span class="setting-desc">How long to keep detection history</span>
+                      </div>
+                      <select class="select-input" id="setting-retention">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="0">Unlimited</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="card danger-zone">
+                  <div class="card-header">
+                    <h3 class="card-title">Danger Zone</h3>
+                  </div>
+                  <div class="danger-actions">
+                    <button class="btn-danger" id="clear-history-btn">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                      Clear All History
+                    </button>
+                    <button class="btn-danger" id="reset-settings-btn">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                      </svg>
+                      Reset All Settings
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- About Tab -->
+        <div class="tab-panel" id="tab-about">
+          <div class="about-layout">
+            <div class="about-hero">
+              <div class="about-logo">
+                <svg width="64" height="64" viewBox="0 0 13 13" fill="none">
+                  <path d="M6.5 1.5L11 4V8C11 10.5 9 12.5 6.5 13C4 12.5 2 10.5 2 8V4L6.5 1.5Z" stroke="#34c77b" stroke-width="1.1" stroke-linejoin="round"/>
+                  <path d="M4.5 6.5L6 8L8.5 5" stroke="#34c77b" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <h1 class="about-title">SilentShield</h1>
+              <p class="about-version">Version 1.0.0</p>
+              <p class="about-tagline">AI-powered protection against cyberbullying and toxic content</p>
+              <div class="about-badges">
+                <span class="badge-tag">Zero Telemetry</span>
+                <span class="badge-tag">Local AI</span>
+                <span class="badge-tag">Open Source</span>
+              </div>
+            </div>
+
+            <div class="about-grid">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">How It Works</h3>
+                </div>
+                <div class="about-content">
+                  <p>SilentShield runs entirely in your browser using <strong>Transformers.js</strong> and <strong>ONNX Runtime</strong>. All content analysis happens locally on your device — no data is ever sent to external servers.</p>
+                  <p>The extension uses a fine-tuned DistilBERT model to classify text in real-time as you browse social media platforms. When potentially harmful content is detected, it can automatically blur the content or warn you based on your settings.</p>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Privacy First</h3>
+                </div>
+                <div class="about-content">
+                  <ul class="feature-list">
+                    <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34c77b" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> No data leaves your device</li>
+                    <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34c77b" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> No account or signup required</li>
+                    <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34c77b" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> No telemetry or tracking</li>
+                    <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34c77b" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Fully open source</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Supported Platforms</h3>
+                </div>
+                <div class="about-content">
+                  <div class="platform-grid">
+                    <span class="platform-tag">X (Twitter)</span>
+                    <span class="platform-tag">Facebook</span>
+                    <span class="platform-tag">Instagram</span>
+                    <span class="platform-tag">Reddit</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Credits</h3>
+                </div>
+                <div class="about-content">
+                  <p>Built with:</p>
+                  <div class="credit-tags">
+                    <span class="credit-tag">Transformers.js</span>
+                    <span class="credit-tag">ONNX Runtime</span>
+                    <span class="credit-tag">BERT</span>
+                    <span class="credit-tag">Chrome Extensions API</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

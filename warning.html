@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SilentShield - Site Blocked</title>
+  <style>
+    body {
+      background-color: #111416; /* Matches --bg */
+      color: #dde4ec;           /* Matches --text-1[cite: 3, 7] */
+      font-family: 'IBM Plex Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    .container {
+      background: #181c20;      /* Matches --surface[cite: 3, 7] */
+      border: 1px solid #e05c6e; /* Matches --danger[cite: 3, 7] */
+      border-radius: 8px;       /* Matches --r[cite: 3, 7] */
+      padding: 40px;
+      max-width: 500px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    h1 { 
+      color: #e05c6e; 
+      margin-top: 0;
+      font-size: 24px;
+      letter-spacing: -0.5px;
+    }
+    p { 
+      color: #6b7e93; /* Matches --text-2[cite: 3, 7] */
+      line-height: 1.6; 
+      font-size: 13px; 
+      margin-bottom: 20px;
+    }
+    .url-box {
+      background: #111416;
+      padding: 14px;
+      border-radius: 4px;
+      font-family: 'IBM Plex Mono', monospace; /* Matches --mono[cite: 3, 7] */
+      color: #d4913a; /* Matches --amber[cite: 3, 7] */
+      margin: 20px 0;
+      word-break: break-all;
+      font-size: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .btn {
+      background: #34c77b; /* Matches --accent[cite: 3, 7] */
+      color: #111416;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚠️ Access Blocked</h1>
+    <p>SilentShield has intercepted this request because the destination matches your blocked keywords or known malicious domains.</p>
+    
+    <div class="url-box" id="blocked-url">Analyzing request...</div>
+    
+    <button id="back-btn" class="btn">Return to Safety</button>
+  </div>
+
+  <script>
+    // 1. URL DISPLAY LOGIC
+    const urlBox = document.getElementById('blocked-url');
+    const params = new URLSearchParams(window.location.search);
+    const blockedParam = params.get('blocked');
+
+    if (blockedParam) {
+      urlBox.textContent = decodeURIComponent(blockedParam);
+    } else if (document.referrer && !document.referrer.includes(chrome.runtime.id)) {
+      urlBox.textContent = document.referrer;
+    } else {
+      urlBox.textContent = "Restricted Content Flagged";
+    }
+
+    // 2. ESCAPE HATCH LOGIC (Fixes the redirect loop)
+    document.getElementById('back-btn').addEventListener('click', () => {
+      // If there's a real referrer, go back to it
+      if (document.referrer && !document.referrer.includes(chrome.runtime.id)) {
+        window.location.href = document.referrer;
+        return;
+      }
+
+      // If they have history, jump back 2 steps to skip the page that triggered the block
+      if (window.history.length > 2) {
+        window.history.go(-2);
+      } else {
+        // Ultimate fallback: Go to Google to break the loop
+        window.location.replace("https://www.google.com");
+      }
+
+      // Safety: If they are still on this warning page after 400ms, force an exit
+      setTimeout(() => {
+        if (window.location.href.includes('warning.html')) {
+          window.location.replace("https://www.google.com");
+        }
+      }, 400);
+    });
+  </script>
+</body>
+</html>
