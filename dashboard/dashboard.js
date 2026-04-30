@@ -7,40 +7,23 @@
   'use strict';
 
   // ==========================================
-  // Sample Data (Placeholder)
+  // Dynamic Data Storage
   // ==========================================
-  const sampleData = {
-    safetyScore: 94,
+  let dashboardData = {
+    safetyScore: 100,
     stats: {
-      toxicDetected: 127,
-      autoBlurred: 89,
-      inferences: '2.4K',
-      activeDays: 14
+      toxicDetected: 0,
+      autoBlurred: 0,
+      inferences: '0',
+      activeDays: 0
     },
-    recentActivity: [
-      { id: 1, text: 'You are such a worthless person, nobody likes you', category: 'toxic', confidence: 0.94, source: 'X (Twitter)', time: '2 min ago' },
-      { id: 2, text: 'This group of people should not be allowed here', category: 'hate', confidence: 0.89, source: 'Reddit', time: '5 min ago' },
-      { id: 3, text: 'I am going to find you and make you regret everything', category: 'harassment', confidence: 0.87, source: 'Facebook', time: '12 min ago' },
-      { id: 4, text: 'Why are you even alive? Just disappear already', category: 'toxic', confidence: 0.96, source: 'Instagram', time: '18 min ago' },
-      { id: 5, text: 'Go back to where you came from, you don\'t belong here', category: 'hate', confidence: 0.91, source: 'X (Twitter)', time: '25 min ago' },
-    ],
-    historyEntries: [
-      { id: 1, text: 'You are such a worthless person, nobody likes you', category: 'toxic', confidence: '94%', source: 'X (Twitter)', time: '2 min ago', action: 'Blurred' },
-      { id: 2, text: 'This group of people should not be allowed here', category: 'hate', confidence: '89%', source: 'Reddit', time: '5 min ago', action: 'Blurred' },
-      { id: 3, text: 'I am going to find you and make you regret everything', category: 'harassment', confidence: '87%', source: 'Facebook', time: '12 min ago', action: 'Blurred' },
-      { id: 4, text: 'Why are you even alive? Just disappear already', category: 'toxic', confidence: '96%', source: 'Instagram', time: '18 min ago', action: 'Blurred' },
-      { id: 5, text: 'Go back to where you came from, you don\'t belong here', category: 'hate', confidence: '91%', source: 'X (Twitter)', time: '25 min ago', action: 'Blurred' },
-      { id: 6, text: 'You\'re so stupid, can\'t you do anything right?', category: 'toxic', confidence: '82%', source: 'Reddit', time: '32 min ago', action: 'Blurred' },
-      { id: 7, text: 'I know where you live, watch your back', category: 'harassment', confidence: '93%', source: 'Facebook', time: '45 min ago', action: 'Blocked' },
-      { id: 8, text: 'People like you ruin everything for everyone else', category: 'toxic', confidence: '78%', source: 'Instagram', time: '1 hour ago', action: 'Blurred' },
-      { id: 9, text: 'Your kind should be banned from this platform', category: 'hate', confidence: '85%', source: 'X (Twitter)', time: '1 hour ago', action: 'Blurred' },
-      { id: 10, text: 'Keep talking and see what happens to you', category: 'harassment', confidence: '88%', source: 'Reddit', time: '2 hours ago', action: 'Blocked' },
-    ],
+    recentActivity: [],
+    historyEntries: [],
     trendsData: {
       labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      toxic: [12, 19, 15, 22, 18, 25, 14],
-      suspicious: [8, 12, 10, 15, 11, 14, 9],
-      safe: [180, 195, 188, 172, 190, 165, 178]
+      toxic: [0, 0, 0, 0, 0, 0, 0],
+      suspicious: [0, 0, 0, 0, 0, 0, 0],
+      safe: [0, 0, 0, 0, 0, 0, 0]
     },
     testSamples: {
       toxic: 'You are such a worthless person. Nobody cares about you and you should just disappear. Everything you do is terrible.',
@@ -108,6 +91,291 @@
   let isAnalyzing = false;
 
   // ==========================================
+  // Real-time Toxicity Detection (same logic as content.js)
+  // ==========================================
+  const DETECTION_CATEGORIES = {
+    toxic: { keywords: ['fuck','shit','bitch','asshole','stupid','idiot','worthless','loser','terrible','garbage','dumb','moron','hate you','suck','trash'], weight: 0.35 },
+    hate: { keywords: ['hate','nigger','faggot','cunt','retard','kys','kill yourself','die','fag','chink','spic','wetback'], weight: 0.40 },
+    harassment: { keywords: ['kill','die','hurt','attack','find you','watch your back','threat','regret','coming for you','destroy you','ruin your'], weight: 0.35 },
+    profanity: { keywords: ['damn','hell','crap','piss','bastard','dammit','goddamn','jesus christ','oh my god','wtf'], weight: 0.15 }
+  };
+
+  function analyzeTextReal(text) {
+    if (!text || text.length < 10) {
+      return { error: 'Text too short for analysis' };
+    }
+
+    const lower = text.toLowerCase();
+    let totalScore = 0.05;
+    const categoryScores = {};
+
+    // Analyze each category
+    for (const [cat, data] of Object.entries(DETECTION_CATEGORIES)) {
+      let catScore = 0;
+      data.keywords.forEach(word => {
+        if (lower.includes(word)) {
+          catScore += data.weight;
+        }
+      });
+      categoryScores[cat] = Math.min(catScore, 0.98);
+      totalScore += catScore;
+    }
+
+    // Additional heuristics
+    if (text.length < 150 && /fuck|kys|retard|bitch|kill yourself/i.test(lower)) totalScore += 0.4;
+    if (/[A-Z]{5,}/.test(text)) totalScore += 0.1; // ALL CAPS shouting
+    if ((text.match(/[!]/g) || []).length > 2) totalScore += 0.05; // Multiple exclamation
+    if (text.length > 300) totalScore *= 0.85; // Longer texts get slight reduction
+
+    totalScore = Math.min(totalScore, 0.99);
+
+    // Determine primary category and verdict
+    let primaryCategory = 'safe';
+    let maxScore = 0;
+    for (const [cat, score] of Object.entries(categoryScores)) {
+      if (score > maxScore) {
+        maxScore = score;
+        primaryCategory = cat;
+      }
+    }
+
+    let verdict = 'Safe';
+    let verdictClass = 'safe';
+    if (totalScore > 0.7) {
+      verdict = 'Toxic Detected';
+      verdictClass = 'toxic';
+    } else if (totalScore > 0.4) {
+      verdict = 'Suspicious';
+      verdictClass = 'warning';
+    }
+
+    return {
+      verdict,
+      verdictClass,
+      confidence: totalScore,
+      primaryCategory,
+      categories: [
+        { name: 'Toxicity', desc: 'General toxic language', score: categoryScores.toxic, class: getScoreClass(categoryScores.toxic) },
+        { name: 'Hate Speech', desc: 'Targeting groups', score: categoryScores.hate, class: getScoreClass(categoryScores.hate) },
+        { name: 'Harassment', desc: 'Direct attacks', score: categoryScores.harassment, class: getScoreClass(categoryScores.harassment) },
+        { name: 'Profanity', desc: 'Vulgar language', score: categoryScores.profanity, class: getScoreClass(categoryScores.profanity) }
+      ],
+      summary: totalScore > 0.5
+        ? `This content contains potentially harmful language (${primaryCategory}). Confidence: ${(totalScore * 100).toFixed(1)}%`
+        : 'This content appears to be safe and does not contain detected harmful language.'
+    };
+  }
+
+  function getScoreClass(score) {
+    if (score > 0.5) return 'danger';
+    if (score > 0.2) return 'warning';
+    return 'safe';
+  }
+
+  // ==========================================
+  // Settings Management
+  // ==========================================
+  let currentSettings = {
+    autoStart: true,
+    notifications: true,
+    sound: false,
+    threshold: 0.75,
+    catToxicity: true,
+    catHate: true,
+    catHarassment: true,
+    catProfanity: false,
+    autoBlur: true,
+    confidenceOverlay: true,
+    theme: 'dark',
+    blurIntensity: 'medium',
+    storeHistory: true,
+    dataRetention: '30'
+  };
+
+  async function loadSettings() {
+    const stored = await chrome.storage.local.get([
+      'threshold', 'autoBlur', 'notifications', 'soundAlerts',
+      'theme', 'blurIntensity', 'storeHistory', 'dataRetention',
+      'catToxicity', 'catHate', 'catHarassment', 'catProfanity',
+      'autoStart', 'confidenceOverlay'
+    ]);
+
+    currentSettings = {
+      autoStart: stored.autoStart !== false,
+      notifications: stored.notifications !== false,
+      sound: stored.soundAlerts === true,
+      threshold: stored.threshold ?? 0.75,
+      catToxicity: stored.catToxicity !== false,
+      catHate: stored.catHate !== false,
+      catHarassment: stored.catHarassment !== false,
+      catProfanity: stored.catProfanity === true,
+      autoBlur: stored.autoBlur !== false,
+      confidenceOverlay: stored.confidenceOverlay !== false,
+      theme: stored.theme ?? 'dark',
+      blurIntensity: stored.blurIntensity ?? 'medium',
+      storeHistory: stored.storeHistory !== false,
+      dataRetention: stored.dataRetention ?? '30'
+    };
+
+    // Apply to UI
+    applySettingsToUI();
+    return currentSettings;
+  }
+
+  function applySettingsToUI() {
+    const s = currentSettings;
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (el.type === 'checkbox') el.checked = value;
+        else el.value = value;
+      }
+    };
+
+    setValue('setting-autostart', s.autoStart);
+    setValue('setting-notifications', s.notifications);
+    setValue('setting-sound', s.sound);
+    setValue('sensitivity-slider', s.threshold);
+    setValue('threshold-display', s.threshold);
+    setValue('cat-toxicity', s.catToxicity);
+    setValue('cat-hate', s.catHate);
+    setValue('cat-harassment', s.catHarassment);
+    setValue('cat-profanity', s.catProfanity);
+    setValue('setting-autoblur', s.autoBlur);
+    setValue('setting-confidence', s.confidenceOverlay);
+    setValue('setting-theme', s.theme);
+    setValue('setting-blur-intensity', s.blurIntensity);
+    setValue('setting-store-history', s.storeHistory);
+    setValue('setting-retention', s.dataRetention);
+
+    // Update threshold display
+    const threshDisplay = document.getElementById('threshold-display');
+    if (threshDisplay) threshDisplay.textContent = parseFloat(s.threshold).toFixed(2);
+  }
+
+  async function saveSetting(key, value) {
+    currentSettings[key] = value;
+    const storageKey = {
+      autoStart: 'autoStart',
+      notifications: 'notifications',
+      sound: 'soundAlerts',
+      threshold: 'threshold',
+      catToxicity: 'catToxicity',
+      catHate: 'catHate',
+      catHarassment: 'catHarassment',
+      catProfanity: 'catProfanity',
+      autoBlur: 'autoBlur',
+      confidenceOverlay: 'confidenceOverlay',
+      theme: 'theme',
+      blurIntensity: 'blurIntensity',
+      storeHistory: 'storeHistory',
+      dataRetention: 'dataRetention'
+    }[key];
+
+    if (storageKey) {
+      await chrome.storage.local.set({ [storageKey]: value });
+    }
+  }
+
+  // ==========================================
+  // Data Loading from Storage
+  // ==========================================
+  async function loadDashboardData() {
+    try {
+      const data = await chrome.storage.local.get([
+        'toxicCount', 'blurCount', 'inferenceCount',
+        'detectedHistory', 'dailyTrends', 'installDate'
+      ]);
+
+      // Calculate stats
+      const toxicDetected = data.toxicCount || 0;
+      const autoBlurred = data.blurCount || 0;
+      const inferenceCount = data.inferenceCount || 0;
+
+      // Calculate active days
+      let activeDays = 0;
+      if (data.installDate) {
+        const days = Math.floor((Date.now() - data.installDate) / (1000 * 60 * 60 * 24));
+        activeDays = Math.max(1, days);
+      }
+
+      // Format inferences number
+      const inferences = inferenceCount > 1000
+        ? (inferenceCount / 1000).toFixed(1) + 'K'
+        : inferenceCount.toString();
+
+      // Calculate safety score (higher blur ratio = more threats = lower score)
+      let safetyScore = 94;
+      if (inferenceCount > 0) {
+        const threatRatio = toxicDetected / inferenceCount;
+        safetyScore = Math.max(50, Math.round(100 - (threatRatio * 100)));
+      }
+
+      // Process history
+      const historyEntries = (data.detectedHistory || []).map(item => ({
+        ...item,
+        time: getRelativeTime(item.timestamp)
+      }));
+
+      // Process trends data
+      const trendsData = processTrendsData(data.dailyTrends || {});
+
+      // Update dashboard data
+      dashboardData = {
+        ...dashboardData,
+        safetyScore,
+        stats: {
+          toxicDetected,
+          autoBlurred,
+          inferences,
+          activeDays
+        },
+        recentActivity: historyEntries.slice(0, 5),
+        historyEntries,
+        trendsData
+      };
+
+      return dashboardData;
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+      return dashboardData;
+    }
+  }
+
+  function getRelativeTime(timestamp) {
+    if (!timestamp) return 'Unknown';
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hour ago`;
+    return `${Math.floor(seconds / 86400)} days ago`;
+  }
+
+  function processTrendsData(dailyTrends) {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    const labels = [];
+    const toxic = [];
+    const suspicious = [];
+    const safe = [];
+
+    // Get last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayData = dailyTrends[dateStr] || { toxic: 0, suspicious: 0, safe: 0 };
+
+      labels.push(days[date.getDay()]);
+      toxic.push(dayData.toxic || 0);
+      suspicious.push(dayData.suspicious || 0);
+      safe.push(dayData.safe || 0);
+    }
+
+    return { labels, toxic, suspicious, safe };
+  }
+
+  // ==========================================
   // Tab Switching
   // ==========================================
   function switchTab(tabName) {
@@ -155,7 +423,7 @@
   // Overview Functions
   // ==========================================
   function updateSafetyScore() {
-    const score = sampleData.safetyScore;
+    const score = dashboardData.safetyScore;
     elements.safetyScore.textContent = score;
     
     // Update circular progress
@@ -180,16 +448,25 @@
   }
 
   function updateStats() {
-    elements.toxicDetected.textContent = sampleData.stats.toxicDetected;
-    elements.autoBlurred.textContent = sampleData.stats.autoBlurred;
-    elements.inferences.textContent = sampleData.stats.inferences;
-    elements.activeDays.textContent = sampleData.stats.activeDays;
+    elements.toxicDetected.textContent = dashboardData.stats.toxicDetected;
+    elements.autoBlurred.textContent = dashboardData.stats.autoBlurred;
+    elements.inferences.textContent = dashboardData.stats.inferences;
+    elements.activeDays.textContent = dashboardData.stats.activeDays;
   }
 
   function renderRecentActivity() {
     if (!elements.recentActivity) return;
-    
-    elements.recentActivity.innerHTML = sampleData.recentActivity.map(item => `
+
+    if (dashboardData.recentActivity.length === 0) {
+      elements.recentActivity.innerHTML = `
+        <div class="empty-state" style="padding: 24px; text-align: center;">
+          <p style="color: var(--text-secondary);">No detections yet. Browse the web to see activity here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    elements.recentActivity.innerHTML = dashboardData.recentActivity.map(item => `
       <div class="activity-item">
         <div class="activity-icon ${item.category}">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -246,8 +523,8 @@
     };
 
     // Find max value
-    const allValues = [...sampleData.trendsData.toxic, ...sampleData.trendsData.suspicious, ...sampleData.trendsData.safe];
-    const maxValue = Math.max(...allValues) * 1.1;
+    const allValues = [...dashboardData.trendsData.toxic, ...dashboardData.trendsData.suspicious, ...dashboardData.trendsData.safe];
+    const maxValue = Math.max(...allValues, 10) * 1.1;
 
     // Draw grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
@@ -269,17 +546,17 @@
     }
 
     // Draw bars
-    const barWidth = chartWidth / sampleData.trendsData.labels.length / 4;
-    const groupWidth = chartWidth / sampleData.trendsData.labels.length;
+    const barWidth = chartWidth / dashboardData.trendsData.labels.length / 4;
+    const groupWidth = chartWidth / dashboardData.trendsData.labels.length;
 
-    sampleData.trendsData.labels.forEach((label, i) => {
+    dashboardData.trendsData.labels.forEach((label, i) => {
       const x = padding.left + i * groupWidth;
       const centerX = x + groupWidth / 2;
 
       // Draw bars
-      const toxicHeight = (sampleData.trendsData.toxic[i] / maxValue) * chartHeight;
-      const suspiciousHeight = (sampleData.trendsData.suspicious[i] / maxValue) * chartHeight;
-      const safeHeight = (sampleData.trendsData.safe[i] / maxValue) * chartHeight;
+      const toxicHeight = (dashboardData.trendsData.toxic[i] / maxValue) * chartHeight;
+      const suspiciousHeight = (dashboardData.trendsData.suspicious[i] / maxValue) * chartHeight;
+      const safeHeight = (dashboardData.trendsData.safe[i] / maxValue) * chartHeight;
 
       // Safe bar
       ctx.fillStyle = colors.safe;
@@ -328,12 +605,29 @@
       Analyzing...
     `;
 
-    // Simulate analysis delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Small delay for UX
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Generate mock results based on text content
-    const result = generateMockResult(text);
-    displayAnalysisResult(result);
+    // Real analysis using detection engine
+    const result = analyzeTextReal(text);
+
+    if (result.error) {
+      showAnalysisError(result.error);
+    } else {
+      displayAnalysisResult(result);
+
+      // Add to history if toxic and storeHistory is enabled
+      if (result.confidence > 0.5 && currentSettings.storeHistory) {
+        await addToHistory({
+          text: text.substring(0, 200),
+          category: result.primaryCategory === 'safe' ? 'toxic' : result.primaryCategory,
+          confidence: Math.round(result.confidence * 100) + '%',
+          score: result.confidence,
+          source: 'Live Analyzer',
+          action: 'Analyzed'
+        });
+      }
+    }
 
     isAnalyzing = false;
     elements.analyzeBtn.disabled = false;
@@ -345,7 +639,32 @@
     `;
   }
 
-  function generateMockResult(text) {
+  async function addToHistory(detection) {
+    const data = await chrome.storage.local.get(['detectedHistory']);
+    const history = data.detectedHistory || [];
+
+    const newItem = {
+      id: Date.now() + Math.random(),
+      ...detection,
+      timestamp: Date.now(),
+      time: 'Just now'
+    };
+
+    history.unshift(newItem);
+    if (history.length > 100) history.pop();
+
+    await chrome.storage.local.set({ detectedHistory: history });
+
+    // Refresh dashboard data
+    await loadDashboardData();
+    renderRecentActivity();
+    if (currentTab === 'history') {
+      renderHistory(currentFilter, elements.historySearch?.value || '');
+    }
+  }
+
+  // Removed - using analyzeTextReal instead
+  function generateMockResultLegacy(text) {
     // Simple keyword-based detection for demo
     const toxicKeywords = ['worthless', 'stupid', 'hate', 'terrible', 'disappear', 'die', 'kill', 'idiot', 'loser'];
     const hateKeywords = ['group', 'people', 'race', 'religion', 'gender', 'belong', 'allowed', 'banned'];
@@ -481,7 +800,7 @@
 
   function loadTestSample(type) {
     if (!elements.analyzerText) return;
-    elements.analyzerText.value = sampleData.testSamples[type] || '';
+    elements.analyzerText.value = dashboardData.testSamples[type] || '';
     updateCharCount();
     clearAnalyzer();
   }
@@ -492,7 +811,7 @@
   function renderHistory(filter = 'all', search = '') {
     if (!elements.historyTbody) return;
 
-    let filtered = sampleData.historyEntries;
+    let filtered = dashboardData.historyEntries;
 
     if (filter !== 'all') {
       filtered = filtered.filter(item => item.category === filter);
@@ -528,19 +847,41 @@
     `).join('');
 
     if (elements.totalEntries) {
-      elements.totalEntries.textContent = sampleData.historyEntries.length;
+      elements.totalEntries.textContent = dashboardData.historyEntries.length;
     }
     if (elements.historyCount) {
-      elements.historyCount.textContent = sampleData.historyEntries.length;
+      elements.historyCount.textContent = dashboardData.historyEntries.length;
     }
   }
 
-  function deleteHistoryItem(id) {
-    const index = sampleData.historyEntries.findIndex(item => item.id === id);
-    if (index > -1) {
-      sampleData.historyEntries.splice(index, 1);
-      renderHistory(currentFilter, elements.historySearch?.value || '');
+  async function clearAllHistory() {
+    if (confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
+      await chrome.storage.local.set({
+        toxicCount: 0,
+        blurCount: 0,
+        inferenceCount: 0,
+        detectedHistory: [],
+        dailyTrends: {}
+      });
+      await loadDashboardData();
+      renderHistory();
+      updateStats();
+      updateSafetyScore();
+      renderRecentActivity();
+      renderChart();
+      alert('All history has been cleared.');
     }
+  }
+
+  async function deleteHistoryItem(id) {
+    // Remove from storage
+    const data = await chrome.storage.local.get(['detectedHistory']);
+    const history = (data.detectedHistory || []).filter(item => item.id !== id);
+    await chrome.storage.local.set({ detectedHistory: history });
+
+    // Reload and refresh
+    await loadDashboardData();
+    renderHistory(currentFilter, elements.historySearch?.value || '');
   }
 
   // ==========================================
@@ -552,37 +893,30 @@
     }
   }
 
-  function clearAllHistory() {
-    if (confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
-      sampleData.historyEntries = [];
-      renderHistory();
-      alert('All history has been cleared.');
-    }
-  }
 
-  function resetAllSettings() {
+  async function resetAllSettings() {
     if (confirm('Are you sure you want to reset all settings to default?')) {
-      // Reset toggles
-      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.checked = cb.id !== 'setting-sound' && cb.id !== 'cat-profanity';
-      });
-      
-      // Reset slider
-      if (elements.sensitivitySlider) {
-        elements.sensitivitySlider.value = 0.75;
-        updateSensitivity(0.75);
-      }
-      
-      // Reset selects
-      const themeSelect = document.getElementById('setting-theme');
-      if (themeSelect) themeSelect.value = 'dark';
-      
-      const blurSelect = document.getElementById('setting-blur-intensity');
-      if (blurSelect) blurSelect.value = 'medium';
-      
-      const retentionSelect = document.getElementById('setting-retention');
-      if (retentionSelect) retentionSelect.value = '30';
-      
+      const defaults = {
+        autoStart: true,
+        notifications: true,
+        soundAlerts: false,
+        threshold: 0.75,
+        catToxicity: true,
+        catHate: true,
+        catHarassment: true,
+        catProfanity: false,
+        autoBlur: true,
+        confidenceOverlay: true,
+        theme: 'dark',
+        blurIntensity: 'medium',
+        storeHistory: true,
+        dataRetention: '30'
+      };
+
+      await chrome.storage.local.set(defaults);
+      await loadSettings();
+      applySettingsToUI();
+
       alert('Settings have been reset to default.');
     }
   }
@@ -599,9 +933,9 @@
   function exportData() {
     const data = {
       exportDate: new Date().toISOString(),
-      safetyScore: sampleData.safetyScore,
-      stats: sampleData.stats,
-      history: sampleData.historyEntries
+      safetyScore: dashboardData.safetyScore,
+      stats: dashboardData.stats,
+      history: dashboardData.historyEntries
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -615,7 +949,7 @@
     URL.revokeObjectURL(url);
   }
 
-  function refreshData() {
+  async function refreshData() {
     elements.refreshBtn.disabled = true;
     elements.refreshBtn.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
@@ -624,23 +958,22 @@
       Refreshing...
     `;
 
-    setTimeout(() => {
-      updateSafetyScore();
-      updateStats();
-      renderRecentActivity();
-      renderHistory(currentFilter, elements.historySearch?.value || '');
-      if (currentTab === 'overview') renderChart();
+    await loadDashboardData();
+    updateSafetyScore();
+    updateStats();
+    renderRecentActivity();
+    renderHistory(currentFilter, elements.historySearch?.value || '');
+    if (currentTab === 'overview') renderChart();
 
-      elements.refreshBtn.disabled = false;
-      elements.refreshBtn.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <polyline points="1 20 1 14 7 14"></polyline>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-        </svg>
-        Refresh
-      `;
-    }, 1000);
+    elements.refreshBtn.disabled = false;
+    elements.refreshBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      Refresh
+    `;
   }
 
   // ==========================================
@@ -687,10 +1020,33 @@
       });
     }
 
-    // Settings
+    // Settings - General
+    document.getElementById('setting-autostart')?.addEventListener('change', (e) => saveSetting('autoStart', e.target.checked));
+    document.getElementById('setting-notifications')?.addEventListener('change', (e) => saveSetting('notifications', e.target.checked));
+    document.getElementById('setting-sound')?.addEventListener('change', (e) => saveSetting('sound', e.target.checked));
+
+    // Settings - Detection
     if (elements.sensitivitySlider) {
-      elements.sensitivitySlider.addEventListener('input', (e) => updateSensitivity(e.target.value));
+      elements.sensitivitySlider.addEventListener('input', (e) => {
+        updateSensitivity(e.target.value);
+        saveSetting('threshold', parseFloat(e.target.value));
+      });
     }
+
+    document.getElementById('cat-toxicity')?.addEventListener('change', (e) => saveSetting('catToxicity', e.target.checked));
+    document.getElementById('cat-hate')?.addEventListener('change', (e) => saveSetting('catHate', e.target.checked));
+    document.getElementById('cat-harassment')?.addEventListener('change', (e) => saveSetting('catHarassment', e.target.checked));
+    document.getElementById('cat-profanity')?.addEventListener('change', (e) => saveSetting('catProfanity', e.target.checked));
+    document.getElementById('setting-autoblur')?.addEventListener('change', (e) => saveSetting('autoBlur', e.target.checked));
+    document.getElementById('setting-confidence')?.addEventListener('change', (e) => saveSetting('confidenceOverlay', e.target.checked));
+
+    // Settings - Display
+    document.getElementById('setting-theme')?.addEventListener('change', (e) => saveSetting('theme', e.target.value));
+    document.getElementById('setting-blur-intensity')?.addEventListener('change', (e) => saveSetting('blurIntensity', e.target.value));
+
+    // Settings - Privacy
+    document.getElementById('setting-store-history')?.addEventListener('change', (e) => saveSetting('storeHistory', e.target.checked));
+    document.getElementById('setting-retention')?.addEventListener('change', (e) => saveSetting('dataRetention', e.target.value));
 
     // Action buttons
     if (elements.refreshBtn) {
@@ -722,7 +1078,9 @@
   // ==========================================
   // Initialize
   // ==========================================
-  function init() {
+  async function init() {
+    await loadSettings();
+    await loadDashboardData();
     updateSafetyScore();
     updateStats();
     renderRecentActivity();
@@ -732,6 +1090,20 @@
 
     // Render chart after a short delay to ensure canvas is ready
     setTimeout(renderChart, 100);
+
+    // Auto-refresh every 30 seconds
+    setInterval(async () => {
+      await loadDashboardData();
+      updateStats();
+      renderRecentActivity();
+      if (currentTab === 'history') {
+        renderHistory(currentFilter, elements.historySearch?.value || '');
+      }
+      if (currentTab === 'overview') {
+        renderChart();
+        updateSafetyScore();
+      }
+    }, 30000);
   }
 
   // Start the dashboard

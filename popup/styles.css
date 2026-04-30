@@ -55,6 +55,30 @@ body {
   color: var(--text-1);
 }
 
+.refresh-btn {
+  background: transparent;
+  border: none;
+  color: #6b7280; /* Neutral gray */
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+  color: #34c77b; /* SilentShield Green */
+  background: rgba(52, 199, 123, 0.1);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* Ensure the header has space for logo, badge, and now refresh btn */
+}
 .logo-mark {
   width: 24px;
   height: 24px;

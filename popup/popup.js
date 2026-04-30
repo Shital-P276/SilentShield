@@ -1,126 +1,194 @@
-/* ── TABS ── */
+/* ── UI HELPERS ── */
 
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-  });
-});
-
-/* ── COUNT-UP ANIMATION ── */
-
+// Animates numbers from 0 to target
 function countUp(el, target, ms = 800) {
-  let start;
-  const tick = ts => {
-    if (!start) start = ts;
-    const progress = Math.min((ts - start) / ms, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    el.textContent = Math.round(eased * target);
-    if (progress < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+    if (!el) return;
+    let start;
+    const tick = ts => {
+        if (!start) start = ts;
+        const progress = Math.min((ts - start) / ms, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(eased * target);
+        if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
 }
 
-/* ── OVERVIEW INIT ── */
+// Updates the Dashboard (Score + Progress Bar + Stats)
+function updateOverviewUI() {
+    chrome.storage.local.get(['toxicCount', 'blurCount']).then(data => {
+        const toxic = data.toxicCount || 0;
+        const blurred = data.blurCount || 0;
+
+        // Safety score logic: Starts at 100, drops as toxic items are found
+        // Uses a "totalScanned" buffer so the score isn't 0% immediately
+        const totalScanned = Math.max(toxic, 1);
+        const safetyScore = Math.max(0, Math.round(100 - (toxic / (totalScanned + 5)) * 100));
+
+        const scoreEl = document.getElementById('score-display');
+        const toxicEl = document.getElementById('toxic-count');
+        const blurEl = document.getElementById('blur-count');
+        const fillEl = document.getElementById('score-fill');
+
+        if (scoreEl) countUp(scoreEl, safetyScore);
+        if (toxicEl) countUp(toxicEl, toxic);
+        if (blurEl) countUp(blurEl, blurred);
+        if (fillEl) fillEl.style.width = safetyScore + '%';
+    });
+}
+
+/* ── INITIAL LOAD & SETTINGS SYNC ── */
+
 window.addEventListener('load', () => {
-  chrome.storage.local.get(['toxicCount', 'blurCount']).then(data => {
-    const toxic = data.toxicCount || 0;
-    const blurred = data.blurCount || 0;
+    // 1. Initial UI Render
+    updateOverviewUI();
 
-    // Safety score: invert toxic ratio (floor at 0, cap at 100)
-    const totalScanned = Math.max(toxic, 1);
-    const safetyScore = Math.max(0, Math.round(100 - (toxic / (totalScanned + 10)) * 100));
+    // 2. Restore Saved Settings (Threshold & Toggles)
+    chrome.storage.local.get(['threshold', 'autoBlur', 'showConfidence']).then(data => {
+        const slider = document.getElementById('slider');
+        const thresholdVal = document.getElementById('threshold-val');
+        const blurToggle = document.getElementById('auto-blur');
+        const confidenceToggle = document.getElementById('show-confidence');
 
-    countUp(document.getElementById('score-display'), safetyScore);
-    countUp(document.getElementById('toxic-count'), toxic);
-    countUp(document.getElementById('blur-count'), blurred);
-    document.getElementById('score-fill').style.width = safetyScore + '%';
-  });
+        if (data.threshold !== undefined && slider) {
+            slider.value = data.threshold;
+            if (thresholdVal) thresholdVal.textContent = parseFloat(data.threshold).toFixed(2);
+        }
+        if (data.autoBlur !== undefined && blurToggle) {
+            blurToggle.checked = data.autoBlur;
+        }
+        if (data.showConfidence !== undefined && confidenceToggle) {
+            confidenceToggle.checked = data.showConfidence;
+        }
+    });
 });
 
+/* ── EVENT LISTENERS ── */
 
-/* ── SETTINGS: SLIDER ── */
-
-document.getElementById('slider').addEventListener('input', e => {
-  document.getElementById('threshold-val').textContent =
-    parseFloat(e.target.value).toFixed(2);
-  browser.storage.local.set({ threshold: e.target.value });
+// Tab Switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const panel = document.getElementById('tab-' + btn.dataset.tab);
+        if (panel) panel.classList.add('active');
+    });
 });
 
-/* ── SETTINGS: TOGGLES ── */
+// Settings: Sensitivity Slider
+const sliderEl = document.getElementById('slider');
+if (sliderEl) {
+    sliderEl.addEventListener('input', e => {
+        const val = e.target.value;
+        const display = document.getElementById('threshold-val');
+        if (display) display.textContent = parseFloat(val).toFixed(2);
+        chrome.storage.local.set({ threshold: val });
+    });
+}
 
-document.getElementById('auto-blur').addEventListener('change', e => {
-  browser.storage.local.set({ autoBlur: e.target.checked });
-});
+// Settings: Toggles
+const blurToggle = document.getElementById('auto-blur');
+if (blurToggle) {
+    blurToggle.addEventListener('change', e => {
+        chrome.storage.local.set({ autoBlur: e.target.checked });
+    });
+}
 
-document.getElementById('show-confidence').addEventListener('change', e => {
-  browser.storage.local.set({ showConfidence: e.target.checked });
-});
+const confToggle = document.getElementById('show-confidence');
+if (confToggle) {
+    confToggle.addEventListener('change', e => {
+        chrome.storage.local.set({ showConfidence: e.target.checked });
+    });
+}
 
-/* ── TEST BENCH ── */
+/* ── REFRESH / RESET LOGIC ── */
 
-const runBtn     = document.getElementById('run-btn');
-const testText   = document.getElementById('test-text');
+const resetBtn = document.getElementById('reset-stats-btn');
+if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+        // Clear counts in storage
+        chrome.storage.local.set({ toxicCount: 0, blurCount: 0 }).then(() => {
+            updateOverviewUI();
+            
+            // Notify content script to reset its local variables
+            chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+                if (tabs[0]) {
+                    chrome.tabs.sendMessage(tabs[0].id, { type: "RESET_COUNTERS" }).catch(() => {
+                        // Ignore error if content script isn't injected on this page
+                    });
+                }
+            });
+        });
+
+        // Visual feedback (spin icon)
+        resetBtn.style.transform = 'rotate(360deg)';
+        resetBtn.style.transition = 'transform 0.5s ease';
+        setTimeout(() => { 
+            resetBtn.style.transform = 'rotate(0deg)'; 
+            resetBtn.style.transition = 'none'; 
+        }, 500);
+    });
+}
+
+/* ── TEST BENCH (ANALYZER) ── */
+
+const runBtn = document.getElementById('run-btn');
+const testText = document.getElementById('test-text');
 const resultCard = document.getElementById('result-card');
-const resultTag  = document.getElementById('result-tag');
-const resultScore = document.getElementById('result-score');
 
-runBtn.addEventListener('click', async () => {
-  const text = testText.value.trim();
-  if (!text) return;
+if (runBtn) {
+    runBtn.addEventListener('click', async () => {
+        const text = testText.value.trim();
+        if (!text) return;
 
-  runBtn.textContent = 'Analyzing…';
-  runBtn.disabled = true;
-  resultCard.classList.remove('show');
+        runBtn.textContent = 'Analyzing…';
+        runBtn.disabled = true;
+        if (resultCard) resultCard.classList.remove('show');
 
-  try {
-    const response = await browser.runtime.sendMessage({ type: 'ANALYZE_TEXT', text });
-    const result = response.result[0];
-    const isToxic = result.label === 'NEGATIVE';
+        try {
+            // Sends text to background script for Transformers.js analysis
+            const response = await chrome.runtime.sendMessage({ type: 'ANALYZE_TEXT', text });
+            const result = response.result[0];
+            const isToxic = result.label === 'NEGATIVE';
 
-    resultTag.textContent = isToxic ? 'Toxic' : 'Safe';
-    resultTag.className = 'result-tag ' + (isToxic ? 'toxic' : 'safe');
-    resultScore.textContent = (result.score * 100).toFixed(1) + '%';
-    resultCard.classList.add('show');
-  } catch (err) {
-    resultTag.textContent = 'Error';
-    resultTag.className = 'result-tag toxic';
-    resultScore.textContent = '—';
-    resultCard.classList.add('show');
-    console.error('SilentShield: background script error', err);
-  } finally {
-    runBtn.textContent = 'Run Inference';
-    runBtn.disabled = false;
-  }
-});
+            const resultTag = document.getElementById('result-tag');
+            const resultScore = document.getElementById('result-score');
 
-/* ── RESTORE SAVED SETTINGS ── */
-
-browser.storage.local.get(['threshold', 'autoBlur', 'showConfidence']).then(data => {
-  if (data.threshold !== undefined) {
-    document.getElementById('slider').value = data.threshold;
-    document.getElementById('threshold-val').textContent =
-      parseFloat(data.threshold).toFixed(2);
-  }
-  if (data.autoBlur !== undefined) {
-    document.getElementById('auto-blur').checked = data.autoBlur;
-  }
-  if (data.showConfidence !== undefined) {
-    document.getElementById('show-confidence').checked = data.showConfidence;
-  }
-});
+            if (resultTag) {
+                resultTag.textContent = isToxic ? 'Toxic' : 'Safe';
+                resultTag.className = 'result-tag ' + (isToxic ? 'toxic' : 'safe');
+            }
+            if (resultScore) resultScore.textContent = (result.score * 100).toFixed(1) + '%';
+            if (resultCard) resultCard.classList.add('show');
+        } catch (err) {
+            console.error('SilentShield Analyzer Error:', err);
+        } finally {
+            runBtn.textContent = 'Run Inference';
+            runBtn.disabled = false;
+        }
+    });
+}
 
 /* ── OPEN FULL DASHBOARD ── */
 
-document.getElementById('open-dashboard-btn').addEventListener('click', () => {
-  browser.windows.create({
-    url: browser.runtime.getURL('dashboard/dashboard.html'),
-    type: 'popup',
-    width: 1000,
-    height: 700,
-    left: 100,
-    top: 100
-  });
+const dashboardBtn = document.getElementById('open-dashboard-btn');
+if (dashboardBtn) {
+    dashboardBtn.addEventListener('click', () => {
+        chrome.windows.create({
+            url: chrome.runtime.getURL('dashboard/dashboard.html'),
+            type: 'popup',
+            width: 1000,
+            height: 700
+        });
+    });
+}
+
+/* ── EXTERNAL SYNC ── */
+
+// Listen for updates from content.js while popup is open
+chrome.storage.onChanged.addListener((changes) => {
+    if (changes.toxicCount || changes.blurCount) {
+        updateOverviewUI();
+    }
 });

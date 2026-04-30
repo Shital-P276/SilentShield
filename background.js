@@ -1,3 +1,5 @@
+
+
 // Silent Shield Background Service Worker
 console.log('🛡️ Silent Shield: Service Worker Active');
 
@@ -51,25 +53,56 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case 'getShieldStatus':
       chrome.storage.local.get([
-        'modelReady', 
-        'scanCount', 
-        'shieldActive'
+        'modelReady',
+        'scanCount',
+        'shieldActive',
+        'toxicCount',
+        'blurCount',
+        'inferenceCount'
       ], (result) => {
         sendResponse({
           modelReady: result.modelReady || false,
           scanCount: result.scanCount || 0,
-          shieldActive: result.shieldActive !== false
+          shieldActive: result.shieldActive !== false,
+          toxicCount: result.toxicCount || 0,
+          blurCount: result.blurCount || 0,
+          inferenceCount: result.inferenceCount || 0
         });
       });
       return true; // Async response
-      
+
+    case 'getDashboardData':
+      chrome.storage.local.get([
+        'toxicCount',
+        'blurCount',
+        'inferenceCount',
+        'detectedHistory',
+        'dailyTrends',
+        'installDate'
+      ], (result) => {
+        sendResponse(result);
+      });
+      return true;
+
+    case 'clearAllHistory':
+      chrome.storage.local.set({
+        toxicCount: 0,
+        blurCount: 0,
+        inferenceCount: 0,
+        detectedHistory: [],
+        dailyTrends: {}
+      }, () => {
+        sendResponse({ success: true });
+      });
+      return true;
+
     case 'updateStats':
       chrome.storage.local.set({
         scanCount: (request.scanCount || 0),
         lastScan: Date.now()
       });
       break;
-      
+
     case 'toggleShield':
       chrome.storage.local.set({
         shieldActive: request.active

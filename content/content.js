@@ -1,9 +1,20 @@
+
+
 // content/content.js - SilentShield v4.3 Aggressive (Working Base)
 let threshold = 0.75;
 let autoBlurEnabled = true;
 
 let toxicCount = 0;
 let blurCount = 0;
+let inferenceCount = 0;
+let detectedHistory = [];
+let dailyTrends = {};
+
+const CATEGORIES = {
+  toxic: { keywords: ['fuck','shit','bitch','asshole','stupid','idiot','worthless','loser','terrible','garbage'], weight: 0.35 },
+  hate: { keywords: ['hate','nigger','faggot','cunt','retard','kys','kill yourself'], weight: 0.40 },
+  harassment: { keywords: ['kill','die','hurt','attack','find you','watch your back','threat','regret'], weight: 0.35 }
+};
 
 async function loadSettings() {
   const data = await chrome.storage.local.get(['threshold', 'autoBlur']);
@@ -17,15 +28,37 @@ function calculateToxicityScore(text) {
   if (!text || text.length < 20) return 0;
   const lower = text.toLowerCase();
   let score = 0.15;
+  let categoryScores = { toxic: 0, hate: 0, harassment: 0 };
 
-  toxicKeywords.forEach(word => {
-    if (lower.includes(word)) score += 0.35;
-  });
+  // Check each category
+  for (const [cat, data] of Object.entries(CATEGORIES)) {
+    data.keywords.forEach(word => {
+      if (lower.includes(word)) {
+        score += data.weight;
+        categoryScores[cat] += data.weight;
+      }
+    });
+  }
 
+  // Additional heuristics
   if (text.length < 150 && /fuck|kys|retard|bitch/i.test(lower)) score += 0.4;
   if (text.length > 300) score *= 0.7;
 
-  return Math.min(0.96, score);
+  // Determine primary category
+  let primaryCategory = 'toxic';
+  let maxCatScore = categoryScores.toxic;
+  for (const [cat, catScore] of Object.entries(categoryScores)) {
+    if (catScore > maxCatScore) {
+      maxCatScore = catScore;
+      primaryCategory = cat;
+    }
+  }
+
+  return {
+    score: Math.min(0.96, score),
+    category: primaryCategory,
+    categoryScores
+  };
 }
 
 function findComments() {
@@ -97,10 +130,33 @@ function protectComment(element) {
 
   if (text.length < 30) return;
 
-  const score = calculateToxicityScore(text);
+  inferenceCount++;
+  const result = calculateToxicityScore(text);
+  const score = result.score;
+
   if (score > threshold) {
     console.log(`🔴 Flagged (${score.toFixed(2)}): ${text.substring(0, 70)}...`);
     toxicCount++;
+
+    // Add to history
+    const detection = {
+      id: Date.now() + Math.random(),
+      text: text.substring(0, 200),
+      category: result.category,
+      confidence: Math.round(score * 100) + '%',
+      score: score,
+      source: window.location.hostname.replace('www.', ''),
+      timestamp: Date.now(),
+      time: getTimeAgo(Date.now()),
+      action: autoBlurEnabled ? 'Blurred' : 'Detected',
+      blurred: autoBlurEnabled
+    };
+    detectedHistory.unshift(detection);
+    if (detectedHistory.length > 100) detectedHistory.pop(); // Keep last 100
+
+    // Update daily trends
+    updateDailyTrends(result.category);
+
     element.classList.add('silentshield-toxic');
 
     if (autoBlurEnabled) {
@@ -121,9 +177,49 @@ function protectComment(element) {
       element.appendChild(revealBtn);
     }
 
-    // Persist counts so popup can read them
-    chrome.storage.local.set({ toxicCount, blurCount });
+    // Persist all data
+    persistData();
+  } else {
+    updateDailyTrends('safe');
   }
+}
+
+function getTimeAgo(timestamp) {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'Just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hour ago`;
+  return `${Math.floor(seconds / 86400)} days ago`;
+}
+
+function updateDailyTrends(category) {
+  const today = new Date().toISOString().split('T')[0];
+  if (!dailyTrends[today]) {
+    dailyTrends[today] = { toxic: 0, suspicious: 0, safe: 0 };
+  }
+  if (category === 'toxic' || category === 'hate') {
+    dailyTrends[today].toxic++;
+  } else if (category === 'harassment') {
+    dailyTrends[today].suspicious++;
+  } else {
+    dailyTrends[today].safe++;
+  }
+}
+
+async function persistData() {
+  // Get install date if not set
+  const data = await chrome.storage.local.get(['installDate']);
+  const installDate = data.installDate || Date.now();
+
+  await chrome.storage.local.set({
+    toxicCount,
+    blurCount,
+    inferenceCount,
+    detectedHistory,
+    dailyTrends,
+    installDate,
+    lastUpdated: Date.now()
+  });
 }
 
 let timeout = null;
@@ -138,6 +234,21 @@ function scanContent() {
 
 async function init() {
   await loadSettings();
+
+  // Load persisted counts
+  const data = await chrome.storage.local.get([
+    'toxicCount', 'blurCount', 'inferenceCount',
+    'detectedHistory', 'dailyTrends', 'installDate'
+  ]);
+  if (data.toxicCount !== undefined) toxicCount = data.toxicCount;
+  if (data.blurCount !== undefined) blurCount = data.blurCount;
+  if (data.inferenceCount !== undefined) inferenceCount = data.inferenceCount;
+  if (data.detectedHistory) detectedHistory = data.detectedHistory;
+  if (data.dailyTrends) dailyTrends = data.dailyTrends;
+  if (!data.installDate) {
+    await chrome.storage.local.set({ installDate: Date.now() });
+  }
+
   injectGlobalStyles();
 
   console.log("%c🚀 SilentShield v4.3 - Aggressive Detection (Stable)", "color:#10b981; font-weight:bold");
@@ -149,3 +260,4 @@ async function init() {
 }
 
 init();
+

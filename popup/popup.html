@@ -25,12 +25,18 @@
       <div class="badge-dot"></div>
       active
     </div>
+<button class="refresh-btn" id="reset-stats-btn" title="Reset Session Stats">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 4v6h-6"></path>
+    <path d="M1 20v-6h6"></path>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+  </svg>
+</button>
   </div>
 
   <nav class="nav">
     <button class="tab-btn active" data-tab="overview">Overview</button>
     <button class="tab-btn" data-tab="testbench">Analyzer</button>
-    <button class="tab-btn" data-tab="settings">Settings</button>
     <button class="tab-btn" data-tab="about">About</button>
   </nav>
 
@@ -92,49 +98,7 @@
       </div>
     </div>
 
-    <!-- SETTINGS -->
-    <div class="tab-panel" id="tab-settings">
-      <div class="setting-block">
-        <div class="setting-head">
-          <span class="setting-title">Sensitivity Threshold</span>
-          <span class="setting-val" id="threshold-val">0.75</span>
-        </div>
-        <div class="setting-desc">Higher values are more forgiving — lower values catch more edge cases.</div>
-        <input type="range" id="slider" min="0.5" max="0.95" step="0.05" value="0.75">
-        <div class="range-ends">
-          <span class="range-end">Strict</span>
-          <span class="range-end">Lenient</span>
-        </div>
-      </div>
-
-      <div class="setting-block">
-        <div class="toggle-row">
-          <div class="toggle-text">
-            <div class="t-name">Auto-Blur Content</div>
-            <div class="t-sub">Hide toxic text behind a blur</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="auto-blur" checked>
-            <div class="t-track"></div>
-            <div class="t-thumb"></div>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-block">
-        <div class="toggle-row">
-          <div class="toggle-text">
-            <div class="t-name">Show Confidence Score</div>
-            <div class="t-sub">Display model certainty on blurred items</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="show-confidence" checked>
-            <div class="t-track"></div>
-            <div class="t-thumb"></div>
-          </label>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- ABOUT -->
     <div class="tab-panel" id="tab-about">
