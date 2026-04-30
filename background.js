@@ -1,100 +1,66 @@
-// background.js - SilentShield Background Service Worker with Real toxic-bert
+// SilentShield Background Service Worker v6.0
+// Lightweight: only handles storage relay and badge updates
+// AI model is loaded in content script to avoid CSP issues
 
-console.log('🛡️ SilentShield: Background Service Worker Active');
+'use strict';
 
-let classifier = null;
-let modelReady = false;
+const PREFIX = '[SilentShield BG]';
+const log = (...a) => console.log(PREFIX, ...a);
 
-// Load the toxicity model
-async function loadToxicityModel() {
-  if (modelReady) return true;
-
+// ─── BADGE HELPERS ──────────────────────────────────────────────────────────
+function updateBadge(tabId, count) {
   try {
-    console.log('🔄 Loading Xenova/toxic-bert model...');
-
-    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
-
-    classifier = await pipeline('text-classification', 'Xenova/toxic-bert', {
-      quantized: true,
-      progress_callback: (data) => {
-        if (data.status === 'ready') {
-          console.log('✅ toxic-bert model loaded successfully');
-        }
-      }
-    });
-
-    modelReady = true;
-    chrome.storage.local.set({ modelReady: true });
-    console.log('🚀 SilentShield AI Model Ready');
-    return true;
-
-  } catch (error) {
-    console.error('❌ Failed to load toxic-bert model:', error);
-    return false;
-  }
+    if (count > 0) {
+      chrome.action.setBadgeText({ text: String(count), tabId });
+      chrome.action.setBadgeBackgroundColor({ color: '#e94560', tabId });
+    } else {
+      chrome.action.setBadgeText({ text: '', tabId });
+    }
+  } catch (e) {}
 }
 
-// Message handler
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "ANALYZE_TOXICITY") {
-    handleToxicityAnalysis(request.text, sendResponse);
-    return true; // Keep message channel open for async response
+// ─── MESSAGE HANDLER ────────────────────────────────────────────────────────
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  const tabId = sender.tab?.id;
+
+  if (msg.type === 'STATS_UPDATE') {
+    log('Stats update from tab', tabId, msg.stats);
+    updateBadge(tabId, msg.stats.flagged || 0);
+
+    // Persist stats per tab
+    if (tabId) {
+      chrome.storage.local.set({ [`ssStats_${tabId}`]: msg.stats });
+    }
+    sendResponse({ ok: true });
   }
 
-  // Existing handlers
-  if (request.action === 'getShieldStatus') {
-    sendResponse({
-      modelReady: modelReady,
-      scanCount: 0 // can be expanded later
+  if (msg.type === 'MODEL_READY') {
+    log('toxic-bert model ready in tab', tabId);
+    sendResponse({ ok: true });
+  }
+
+  if (msg.type === 'GET_SETTINGS') {
+    chrome.storage.local.get('ssSettings', (result) => {
+      sendResponse({ settings: result.ssSettings || {} });
+    });
+    return true; // async
+  }
+
+  if (msg.type === 'SAVE_SETTINGS') {
+    chrome.storage.local.set({ ssSettings: msg.settings }, () => {
+      sendResponse({ ok: true });
     });
     return true;
+  }
+
+  return true;
+});
+
+// ─── TAB EVENTS ─────────────────────────────────────────────────────────────
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'loading') {
+    updateBadge(tabId, 0);
   }
 });
 
-async function handleToxicityAnalysis(text, sendResponse) {
-  if (!text || text.length < 10) {
-    sendResponse({ score: 0 });
-    return;
-  }
-
-  // Ensure model is loaded
-  if (!classifier) {
-    const loaded = await loadToxicityModel();
-    if (!loaded) {
-      // Fallback to simple keyword score
-      const fallbackScore = getKeywordScore(text);
-      sendResponse({ score: fallbackScore });
-      return;
-    }
-  }
-
-  try {
-    const results = await classifier(text, { top_k: null });
-    // Find the 'toxic' label score
-    const toxicResult = results.find(r => r.label.toLowerCase().includes('toxic')) || results[0];
-    const score = toxicResult.score || 0;
-
-    console.log(`AI Analysis: "${text.substring(0, 60)}..." → Score: ${(score*100).toFixed(1)}%`);
-    sendResponse({ score: score });
-
-  } catch (error) {
-    console.error('Inference error:', error);
-    sendResponse({ score: getKeywordScore(text) });
-  }
-}
-
-// Simple keyword fallback
-function getKeywordScore(text) {
-  const lower = text.toLowerCase();
-  let score = 0.1;
-  const badWords = ["fuck","fucking","shit","bitch","asshole","cunt","kys","retard"];
-  badWords.forEach(word => {
-    if (lower.includes(word)) score += 0.35;
-  });
-  return Math.min(0.95, score);
-}
-
-// Initialize model on startup
-loadToxicityModel();
-
-console.log('🛡️ SilentShield Background initialized');
+log('Background service worker started');

@@ -1,163 +1,288 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SilentShield</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2128;
+      --border: #30363d;
+      --red: #e94560;
+      --red-dim: rgba(233,69,96,0.15);
+      --green: #3fb950;
+      --yellow: #d29922;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px;
+      min-height: 460px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+    }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-logo {
+      width: 32px; height: 32px;
+      background: var(--red);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .header-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .platform-badge {
+      margin-left: auto;
+      background: var(--red-dim);
+      border: 1px solid var(--red);
+      color: var(--red);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* SAFETY SCORE */
+    .score-section {
+      padding: 16px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .score-ring {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      border: 3px solid var(--red);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      flex-shrink: 0;
+      background: var(--red-dim);
+    }
+    .score-ring #safety-score {
+      font-size: 17px; font-weight: 800;
+      line-height: 1;
+    }
+    .score-info .label { font-weight: 700; font-size: 14px; }
+    .score-info #safety-label {
+      font-size: 11px; margin-top: 3px;
+    }
+    #safety-label.safe { color: var(--green); }
+    #safety-label.moderate { color: var(--yellow); }
+    #safety-label.danger { color: var(--red); }
+
+    #model-status {
+      font-size: 10px; margin-top: 5px;
+      color: var(--muted);
+    }
+    #model-status.model-ready { color: var(--green); }
+    #model-status.model-fallback { color: var(--yellow); }
+
+    /* STATS */
+    .stats-row {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-box {
+      flex: 1;
+      padding: 12px 10px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stat-box:last-child { border-right: none; }
+    .stat-num {
+      font-size: 20px; font-weight: 800;
+      display: block; line-height: 1;
+    }
+    .stat-num.flagged { color: var(--red); }
+    .stat-num.revealed { color: var(--green); }
+    .stat-label { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+    /* CONTROLS */
+    .controls { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+    .control-label { font-size: 12px; color: var(--text); }
+    .control-sub { font-size: 10px; color: var(--muted); }
+
+    /* Toggle */
+    .toggle { position: relative; width: 36px; height: 20px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      left: 3px; top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--red); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+    /* Slider */
+    .slider-row { padding: 8px 0 4px; }
+    .slider-header {
+      display: flex; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    input[type=range] {
+      width: 100%; height: 4px;
+      -webkit-appearance: none;
+      background: var(--border);
+      border-radius: 4px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      background: var(--red);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    /* ACTIONS */
+    .actions {
+      padding: 12px 18px;
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .btn:hover { border-color: var(--red); color: var(--red); }
+    .btn.primary {
+      background: var(--red);
+      border-color: var(--red);
+      color: white;
+    }
+    .btn.primary:hover { opacity: 0.85; }
+
+    /* FOOTER */
+    .footer {
+      padding: 8px 18px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
 
   <div class="header">
-    <div class="logo">
-      <div class="logo-mark">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M6.5 1.5L11 4V8C11 10.5 9 12.5 6.5 13C4 12.5 2 10.5 2 8V4L6.5 1.5Z" stroke="#34c77b" stroke-width="1.1" stroke-linejoin="round"/>
-          <path d="M4.5 6.5L6 8L8.5 5" stroke="#34c77b" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      SilentShield
+    <div class="header-logo">🛡</div>
+    <div>
+      <div class="header-title">SilentShield</div>
+      <div class="header-sub">AI Cyberbullying Protection</div>
     </div>
-    <div class="badge">
-      <div class="badge-dot"></div>
-      active
+    <span class="platform-badge" id="platform-badge">Loading...</span>
+  </div>
+
+  <div class="score-section">
+    <div class="score-ring">
+      <span id="safety-score">—</span>
+    </div>
+    <div class="score-info">
+      <div class="label">Safety Score</div>
+      <div id="safety-label" class="safe">Calculating...</div>
+      <div id="model-status">⏳ Loading AI...</div>
     </div>
   </div>
 
-  <nav class="nav">
-    <button class="tab-btn active" data-tab="overview">Overview</button>
-    <button class="tab-btn" data-tab="settings">DashBoard</button>
-    <button class="tab-btn" data-tab="settings">Settings</button>
-    <button class="tab-btn" data-tab="about">About</button>
-  </nav>
+  <div class="stats-row">
+    <div class="stat-box">
+      <span class="stat-num" id="stat-scanned">0</span>
+      <div class="stat-label">Scanned</div>
+    </div>
+    <div class="stat-box">
+      <span class="stat-num flagged" id="stat-flagged">0</span>
+      <div class="stat-label">Flagged</div>
+    </div>
+    <div class="stat-box">
+      <span class="stat-num revealed" id="stat-revealed">0</span>
+      <div class="stat-label">Revealed</div>
+    </div>
+  </div>
 
-  <main class="main">
-
-    <!-- OVERVIEW -->
-    <div class="tab-panel active" id="tab-overview">
-      <div class="score-block">
-        <div class="score-eyebrow">Feed Safety Score</div>
-        <div class="score-main">
-          <div class="score-num" id="score-display">0</div>
-          <div class="score-pct">%</div>
-        </div>
-        <div class="score-bar">
-          <div class="score-fill" id="score-fill"></div>
-        </div>
-        <div class="score-model">distilbert-base-uncased · local inference</div>
+  <div class="controls">
+    <div class="control-row">
+      <div>
+        <div class="control-label">Protection Enabled</div>
+        <div class="control-sub">Scan comments in real-time</div>
       </div>
-
-      <div class="stat-row">
-        <div class="stat danger">
-          <div class="stat-label">Toxic Detected</div>
-          <div class="stat-val" id="toxic-count">0</div>
-        </div>
-        <div class="stat amber">
-          <div class="stat-label">Auto-Blurred</div>
-          <div class="stat-val" id="blur-count">0</div>
-        </div>
-      </div>
-
-      <div class="meta-row">
-        <span>Inference engine</span>
-        <span>ONNX · CPU mode</span>
-      </div>
+      <label class="toggle">
+        <input type="checkbox" id="toggle-enabled" checked />
+        <span class="toggle-slider"></span>
+      </label>
     </div>
 
-    <!-- TEST BENCH -->
-    <div class="tab-panel" id="tab-testbench">
-      <p class="bench-desc">Paste any comment to see how the local model will classify it before it hits your feed.</p>
-      <textarea id="test-text" rows="5" placeholder="Paste a comment to analyze…"></textarea>
-      <button class="run-btn" id="run-btn">Run Inference</button>
-      <div class="result-card" id="result-card">
-        <div class="result-top">
-          <span class="result-label">Result</span>
-          <span class="result-tag" id="result-tag">—</span>
-        </div>
-        <div class="result-score" id="result-score">—</div>
-        <div class="result-sub">confidence score</div>
+    <div class="control-row">
+      <div>
+        <div class="control-label">Auto-Blur Toxic Content</div>
+        <div class="control-sub">Blur flagged comments automatically</div>
       </div>
+      <label class="toggle">
+        <input type="checkbox" id="toggle-autoblur" checked />
+        <span class="toggle-slider"></span>
+      </label>
     </div>
 
-    <!-- SETTINGS -->
-    <div class="tab-panel" id="tab-settings">
-      <div class="setting-block">
-        <div class="setting-head">
-          <span class="setting-title">Sensitivity Threshold</span>
-          <span class="setting-val" id="threshold-val">0.75</span>
-        </div>
-        <div class="setting-desc">Higher values are more forgiving — lower values catch more edge cases.</div>
-        <input type="range" id="slider" min="0.5" max="0.95" step="0.05" value="0.75">
-        <div class="range-ends">
-          <span class="range-end">Strict</span>
-          <span class="range-end">Lenient</span>
-        </div>
+    <div class="slider-row">
+      <div class="slider-header">
+        <span class="control-label">Detection Sensitivity</span>
+        <span id="sensitivity-val" style="color: var(--red); font-weight: 700;">50%</span>
       </div>
-
-      <div class="setting-block">
-        <div class="toggle-row">
-          <div class="toggle-text">
-            <div class="t-name">Auto-Blur Content</div>
-            <div class="t-sub">Hide toxic text behind a blur</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="auto-blur" checked>
-            <div class="t-track"></div>
-            <div class="t-thumb"></div>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-block">
-        <div class="toggle-row">
-          <div class="toggle-text">
-            <div class="t-name">Show Confidence Score</div>
-            <div class="t-sub">Display model certainty on blurred items</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="show-confidence" checked>
-            <div class="t-track"></div>
-            <div class="t-thumb"></div>
-          </label>
-        </div>
-      </div>
+      <input type="range" id="sensitivity-slider" min="10" max="90" value="50" />
     </div>
+  </div>
 
-    <!-- ABOUT -->
-    <div class="tab-panel" id="tab-about">
-      <div class="about-top">
-        <div class="about-icon">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 2L17 5.5V11C17 15 13.5 18.5 10 19C6.5 18.5 3 15 3 11V5.5L10 2Z" stroke="#34c77b" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M7 10L9 12L13 8" stroke="#34c77b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div>
-          <div class="about-name">SilentShield</div>
-          <div class="about-version">v1.0.0</div>
-        </div>
-      </div>
-      <div class="about-body">
-        <p>Runs <strong>Transformers.js</strong> entirely within your browser via ONNX runtime. No data ever leaves your device — analysis is fully local and real-time.</p>
-        <p>Built for developers and privacy-conscious users who want control over what they see online.</p>
-        <div class="about-tags">
-          <span class="about-tag">Zero telemetry</span>
-          <span class="about-tag">Local ONNX</span>
-          <span class="about-tag">No account</span>
-          <span class="about-tag">Open source</span>
-        </div>
-      </div>
-    </div>
+  <div class="actions">
+    <button class="btn primary" id="btn-rescan">🔄 Rescan Page</button>
+    <button class="btn" id="btn-reset">Reset Stats</button>
+  </div>
 
-  </main>
-
-  <footer class="footer">
-    <span>CPU Inference: ON</span>
-    <span>SHIELD-250-SF</span>
-  </footer>
+  <div class="footer">
+    TECKATHON 1.0 · PS 5 · SilentShield v6.0
+  </div>
 
   <script src="popup.js"></script>
 </body>

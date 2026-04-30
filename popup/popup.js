@@ -1,106 +1,188 @@
-/* ── TABS ── */
+// SilentShield Popup v6.0
 
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+const log = (...a) => console.log('[SS Popup]', ...a);
+
+// ─── DOM REFS ────────────────────────────────────────────────────────────────
+const els = {
+  enabled: document.getElementById('toggle-enabled'),
+  autoBlur: document.getElementById('toggle-autoblur'),
+  sensitivity: document.getElementById('sensitivity-slider'),
+  sensitivityVal: document.getElementById('sensitivity-val'),
+  scanned: document.getElementById('stat-scanned'),
+  flagged: document.getElementById('stat-flagged'),
+  revealed: document.getElementById('stat-revealed'),
+  safetyScore: document.getElementById('safety-score'),
+  safetyLabel: document.getElementById('safety-label'),
+  modelStatus: document.getElementById('model-status'),
+  rescanBtn: document.getElementById('btn-rescan'),
+  resetBtn: document.getElementById('btn-reset'),
+  platformBadge: document.getElementById('platform-badge'),
+};
+
+let currentSettings = {
+  enabled: true,
+  autoBlur: true,
+  sensitivity: 0.5,
+};
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('ssSettings', (r) => {
+      if (r.ssSettings) currentSettings = { ...currentSettings, ...r.ssSettings };
+      resolve();
+    });
   });
-});
-
-/* ── COUNT-UP ANIMATION ── */
-
-function countUp(el, target, ms = 800) {
-  let start;
-  const tick = ts => {
-    if (!start) start = ts;
-    const progress = Math.min((ts - start) / ms, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    el.textContent = Math.round(eased * target);
-    if (progress < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
 }
 
-/* ── OVERVIEW INIT ── */
+function saveSettings() {
+  chrome.storage.local.set({ ssSettings: currentSettings });
+  // Push to active content script
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]?.id) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        type: 'UPDATE_SETTINGS',
+        settings: currentSettings,
+      }).catch(() => {});
+    }
+  });
+}
 
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    countUp(document.getElementById('score-display'), 92);
-    countUp(document.getElementById('toxic-count'), 24);
-    countUp(document.getElementById('blur-count'), 18);
-    document.getElementById('score-fill').style.width = '92%';
-  }, 100);
-});
-
-/* ── SETTINGS: SLIDER ── */
-
-document.getElementById('slider').addEventListener('input', e => {
-  document.getElementById('threshold-val').textContent =
-    parseFloat(e.target.value).toFixed(2);
-  browser.storage.local.set({ threshold: e.target.value });
-});
-
-/* ── SETTINGS: TOGGLES ── */
-
-document.getElementById('auto-blur').addEventListener('change', e => {
-  browser.storage.local.set({ autoBlur: e.target.checked });
-});
-
-document.getElementById('show-confidence').addEventListener('change', e => {
-  browser.storage.local.set({ showConfidence: e.target.checked });
-});
-
-/* ── TEST BENCH ── */
-
-const runBtn     = document.getElementById('run-btn');
-const testText   = document.getElementById('test-text');
-const resultCard = document.getElementById('result-card');
-const resultTag  = document.getElementById('result-tag');
-const resultScore = document.getElementById('result-score');
-
-runBtn.addEventListener('click', async () => {
-  const text = testText.value.trim();
-  if (!text) return;
-
-  runBtn.textContent = 'Analyzing…';
-  runBtn.disabled = true;
-  resultCard.classList.remove('show');
-
-  try {
-    const response = await browser.runtime.sendMessage({ type: 'ANALYZE_TEXT', text });
-    const result = response.result[0];
-    const isToxic = result.label === 'NEGATIVE';
-
-    resultTag.textContent = isToxic ? 'Toxic' : 'Safe';
-    resultTag.className = 'result-tag ' + (isToxic ? 'toxic' : 'safe');
-    resultScore.textContent = (result.score * 100).toFixed(1) + '%';
-    resultCard.classList.add('show');
-  } catch (err) {
-    resultTag.textContent = 'Error';
-    resultTag.className = 'result-tag toxic';
-    resultScore.textContent = '—';
-    resultCard.classList.add('show');
-    console.error('SilentShield: background script error', err);
-  } finally {
-    runBtn.textContent = 'Run Inference';
-    runBtn.disabled = false;
+function applySettingsToUI() {
+  if (els.enabled) els.enabled.checked = currentSettings.enabled;
+  if (els.autoBlur) els.autoBlur.checked = currentSettings.autoBlur;
+  if (els.sensitivity) {
+    els.sensitivity.value = currentSettings.sensitivity * 100;
+    if (els.sensitivityVal) els.sensitivityVal.textContent = Math.round(currentSettings.sensitivity * 100) + '%';
   }
-});
+}
 
-/* ── RESTORE SAVED SETTINGS ── */
+// ─── STATS ───────────────────────────────────────────────────────────────────
+function updateStatsUI(stats) {
+  if (!stats) return;
+  if (els.scanned) els.scanned.textContent = stats.scanned || 0;
+  if (els.flagged) els.flagged.textContent = stats.flagged || 0;
+  if (els.revealed) els.revealed.textContent = stats.revealed || 0;
 
-browser.storage.local.get(['threshold', 'autoBlur', 'showConfidence']).then(data => {
-  if (data.threshold !== undefined) {
-    document.getElementById('slider').value = data.threshold;
-    document.getElementById('threshold-val').textContent =
-      parseFloat(data.threshold).toFixed(2);
+  // Safety score: 0 flagged = 100%, proportional
+  const total = stats.scanned || 1;
+  const flagged = stats.flagged || 0;
+  const score = Math.max(0, Math.round((1 - flagged / total) * 100));
+
+  if (els.safetyScore) els.safetyScore.textContent = score + '%';
+  if (els.safetyLabel) {
+    if (score >= 90) {
+      els.safetyLabel.textContent = 'Safe Environment';
+      els.safetyLabel.className = 'safe';
+    } else if (score >= 70) {
+      els.safetyLabel.textContent = 'Moderate Risk';
+      els.safetyLabel.className = 'moderate';
+    } else {
+      els.safetyLabel.textContent = 'High Toxicity';
+      els.safetyLabel.className = 'danger';
+    }
   }
-  if (data.autoBlur !== undefined) {
-    document.getElementById('auto-blur').checked = data.autoBlur;
+}
+
+async function fetchStats() {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]?.id) return resolve(null);
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_STATS' }, (res) => {
+        if (chrome.runtime.lastError) return resolve(null);
+        resolve(res);
+      });
+    });
+  });
+}
+
+// ─── PLATFORM DETECTION ──────────────────────────────────────────────────────
+function detectPlatform(url) {
+  if (!url) return null;
+  if (url.includes('reddit.com')) return 'Reddit';
+  if (url.includes('x.com') || url.includes('twitter.com')) return 'X / Twitter';
+  return null;
+}
+
+// ─── EVENT LISTENERS ─────────────────────────────────────────────────────────
+function bindEvents() {
+  if (els.enabled) {
+    els.enabled.addEventListener('change', () => {
+      currentSettings.enabled = els.enabled.checked;
+      saveSettings();
+    });
   }
-  if (data.showConfidence !== undefined) {
-    document.getElementById('show-confidence').checked = data.showConfidence;
+
+  if (els.autoBlur) {
+    els.autoBlur.addEventListener('change', () => {
+      currentSettings.autoBlur = els.autoBlur.checked;
+      saveSettings();
+    });
   }
-});
+
+  if (els.sensitivity) {
+    els.sensitivity.addEventListener('input', () => {
+      const val = els.sensitivity.value / 100;
+      currentSettings.sensitivity = val;
+      if (els.sensitivityVal) els.sensitivityVal.textContent = els.sensitivity.value + '%';
+      saveSettings();
+    });
+  }
+
+  if (els.rescanBtn) {
+    els.rescanBtn.addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, { type: 'RESCAN' }).catch(() => {});
+        }
+      });
+      els.rescanBtn.textContent = 'Rescanning...';
+      setTimeout(() => {
+        els.rescanBtn.textContent = '🔄 Rescan Page';
+        fetchStats().then(updateStatsUI);
+      }, 2000);
+    });
+  }
+
+  if (els.resetBtn) {
+    els.resetBtn.addEventListener('click', () => {
+      chrome.storage.local.remove(['ssStats']);
+      updateStatsUI({ scanned: 0, flagged: 0, revealed: 0 });
+    });
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  await loadSettings();
+  applySettingsToUI();
+  bindEvents();
+
+  // Get current tab info
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const tab = tabs[0];
+    if (!tab) return;
+
+    const platform = detectPlatform(tab.url);
+    if (els.platformBadge) {
+      if (platform) {
+        els.platformBadge.textContent = platform;
+        els.platformBadge.style.display = 'inline-block';
+      } else {
+        els.platformBadge.textContent = 'Unsupported Site';
+        els.platformBadge.style.opacity = '0.5';
+      }
+    }
+
+    const res = await fetchStats();
+    if (res) {
+      updateStatsUI(res.stats);
+      if (els.modelStatus) {
+        els.modelStatus.textContent = res.modelReady ? '✅ AI Model Active' : '⚡ Keyword Mode';
+        els.modelStatus.className = res.modelReady ? 'model-ready' : 'model-fallback';
+      }
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
