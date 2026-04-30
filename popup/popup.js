@@ -24,15 +24,22 @@ function countUp(el, target, ms = 800) {
 }
 
 /* ── OVERVIEW INIT ── */
-
 window.addEventListener('load', () => {
-  setTimeout(() => {
-    countUp(document.getElementById('score-display'), 92);
-    countUp(document.getElementById('toxic-count'), 24);
-    countUp(document.getElementById('blur-count'), 18);
-    document.getElementById('score-fill').style.width = '92%';
-  }, 100);
+  chrome.storage.local.get(['toxicCount', 'blurCount']).then(data => {
+    const toxic = data.toxicCount || 0;
+    const blurred = data.blurCount || 0;
+
+    // Safety score: invert toxic ratio (floor at 0, cap at 100)
+    const totalScanned = Math.max(toxic, 1);
+    const safetyScore = Math.max(0, Math.round(100 - (toxic / (totalScanned + 10)) * 100));
+
+    countUp(document.getElementById('score-display'), safetyScore);
+    countUp(document.getElementById('toxic-count'), toxic);
+    countUp(document.getElementById('blur-count'), blurred);
+    document.getElementById('score-fill').style.width = safetyScore + '%';
+  });
 });
+
 
 /* ── SETTINGS: SLIDER ── */
 
@@ -103,4 +110,17 @@ browser.storage.local.get(['threshold', 'autoBlur', 'showConfidence']).then(data
   if (data.showConfidence !== undefined) {
     document.getElementById('show-confidence').checked = data.showConfidence;
   }
+});
+
+/* ── OPEN FULL DASHBOARD ── */
+
+document.getElementById('open-dashboard-btn').addEventListener('click', () => {
+  browser.windows.create({
+    url: browser.runtime.getURL('dashboard/dashboard.html'),
+    type: 'popup',
+    width: 1000,
+    height: 700,
+    left: 100,
+    top: 100
+  });
 });

@@ -2,6 +2,9 @@
 let threshold = 0.75;
 let autoBlurEnabled = true;
 
+let toxicCount = 0;
+let blurCount = 0;
+
 async function loadSettings() {
   const data = await chrome.storage.local.get(['threshold', 'autoBlur']);
   if (data.threshold !== undefined) threshold = data.threshold;
@@ -97,10 +100,11 @@ function protectComment(element) {
   const score = calculateToxicityScore(text);
   if (score > threshold) {
     console.log(`🔴 Flagged (${score.toFixed(2)}): ${text.substring(0, 70)}...`);
-
+    toxicCount++;
     element.classList.add('silentshield-toxic');
 
     if (autoBlurEnabled) {
+      blurCount++;
       const revealBtn = document.createElement('button');
       revealBtn.textContent = "👁️ Reveal";
       revealBtn.style.cssText = `
@@ -108,16 +112,17 @@ function protectComment(element) {
         background:#1f2937; color:white; border:2px solid #ef4444;
         padding:6px 16px; border-radius:9999px; font-size:13px; cursor:pointer; z-index:200;
       `;
-
       revealBtn.onclick = (e) => {
         e.stopPropagation();
         element.classList.remove('silentshield-toxic');
         revealBtn.remove();
       };
-
       element.style.position = 'relative';
       element.appendChild(revealBtn);
     }
+
+    // Persist counts so popup can read them
+    chrome.storage.local.set({ toxicCount, blurCount });
   }
 }
 
