@@ -75,6 +75,16 @@
     sensitivitySlider: document.getElementById('sensitivity-slider'),
     thresholdDisplay: document.getElementById('threshold-display'),
     
+    // Link Scanner elements
+    checkUrlBtn: document.getElementById('check-url-btn'),
+    testUrlInput: document.getElementById('test-url'),
+    urlResultCard: document.getElementById('url-result-card'),
+    urlResultTag: document.getElementById('url-result-tag'),
+    urlResultDesc: document.getElementById('url-result-desc'),
+
+    // Action buttons
+    actionBtns: document.getElementById('action-buttons'),
+
     // Other buttons
     refreshBtn: document.getElementById('refresh-btn'),
     exportBtn: document.getElementById('export-btn'),
@@ -101,8 +111,20 @@
   };
 
   function analyzeTextReal(text) {
-    if (!text || text.length < 10) {
-      return { error: 'Text too short for analysis' };
+    if (!text || text.length < 2) {
+      return {
+        verdict: 'Safe',
+        verdictClass: 'safe',
+        confidence: 0,
+        primaryCategory: 'safe',
+        categories: [
+          { name: 'Toxicity', desc: 'General toxic language', score: 0, class: 'safe' },
+          { name: 'Hate Speech', desc: 'Targeting groups', score: 0, class: 'safe' },
+          { name: 'Harassment', desc: 'Direct attacks', score: 0, class: 'safe' },
+          { name: 'Profanity', desc: 'Vulgar language', score: 0, class: 'safe' }
+        ],
+        summary: 'Text too short for meaningful analysis.'
+      };
     }
 
     const lower = text.toLowerCase();
@@ -393,6 +415,7 @@
     const titles = {
       overview: 'Overview',
       analyzer: 'Live Text Analyzer',
+      linkchecker: 'Link Scanner',
       history: 'Activity History',
       settings: 'Settings',
       about: 'About SilentShield'
@@ -489,7 +512,8 @@
     const icons = {
       toxic: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
       hate: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>',
-      harassment: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'
+      harassment: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+      cyber_bullying: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>'
     };
     return icons[category] || icons.toxic;
   }
@@ -601,31 +625,96 @@
     elements.analyzeBtn.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
         <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 6v6l4 2"></path>
       </svg>
       Analyzing...
     `;
 
-    // Small delay for UX
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Short timeout for quick fallback
+    const safetyTimeout = setTimeout(() => {
+      if (isAnalyzing) {
+        console.log('Safety timeout triggered - using improved local analyzer');
+        // Use improved CyberAnalyzer
+        const cyberResult = window.CyberAnalyzer ? CyberAnalyzer.analyze(text) : null;
+        if (cyberResult) {
+          displayCyberResult(cyberResult.result);
+        } else {
+          const localResult = analyzeTextReal(text);
+          displayLocalResult(localResult);
+        }
+        isAnalyzing = false;
+        elements.analyzeBtn.disabled = false;
+        elements.analyzeBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Run Analysis
+        `;
+      }
+    }, 3000);
 
-    // Real analysis using detection engine
-    const result = analyzeTextReal(text);
+    try {
+      console.log('Sending analysis request for text:', text.substring(0, 50) + '...');
+      
+      const response = await chrome.runtime.sendMessage({ 
+        action: 'analyzeWithGrok', 
+        text: text 
+      });
 
-    if (result.error) {
-      showAnalysisError(result.error);
-    } else {
-      displayAnalysisResult(result);
+      console.log('Analysis response:', response);
+      clearTimeout(safetyTimeout);
 
-      // Add to history if toxic and storeHistory is enabled
-      if (result.confidence > 0.5 && currentSettings.storeHistory) {
-        await addToHistory({
-          text: text.substring(0, 200),
-          category: result.primaryCategory === 'safe' ? 'toxic' : result.primaryCategory,
-          confidence: Math.round(result.confidence * 100) + '%',
-          score: result.confidence,
-          source: 'Live Analyzer',
-          action: 'Analyzed'
-        });
+      // Check if we got a valid response
+      if (response && (response.result || response.success)) {
+        const aiResult = response.result || response;
+        
+        // Build full category list from background response
+        const categories = [
+          { name: 'Toxicity', desc: 'General toxic language', score: aiResult.category === 'toxic' ? (aiResult.confidence || 0.5) : 0, class: aiResult.category === 'toxic' ? (aiResult.severity || 'medium') : 'safe' },
+          { name: 'Hate Speech', desc: 'Targeting groups', score: aiResult.category === 'hate' ? (aiResult.confidence || 0.5) : 0, class: aiResult.category === 'hate' ? (aiResult.severity || 'high') : 'safe' },
+          { name: 'Harassment', desc: 'Direct attacks', score: aiResult.category === 'harassment' ? (aiResult.confidence || 0.5) : 0, class: aiResult.category === 'harassment' ? (aiResult.severity || 'high') : 'safe' },
+          { name: 'Profanity', desc: 'Vulgar language', score: aiResult.category === 'profanity' ? (aiResult.confidence || 0.3) : 0, class: aiResult.category === 'profanity' ? (aiResult.severity || 'low') : 'safe' }
+        ];
+        
+        const result = {
+          verdict: aiResult.isToxic ? 'Toxic Detected' : 'Safe',
+          verdictClass: aiResult.isToxic ? (aiResult.severity || 'medium') : 'safe',
+          confidence: typeof aiResult.confidence === 'number' ? aiResult.confidence : 0.5,
+          primaryCategory: aiResult.category || 'safe',
+          categories: categories,
+          summary: aiResult.explanation || 'Analysis completed'
+        };
+
+        displayAnalysisResult(result);
+
+        // Add to history if toxic
+        if (aiResult.isToxic && currentSettings.storeHistory) {
+          await addToHistory({
+            text: text.substring(0, 200),
+            category: aiResult.category || 'toxic',
+            confidence: Math.round((aiResult.confidence || 0) * 100) + '%',
+            score: aiResult.confidence || 0,
+            source: 'Cyberbullying AI Expert',
+            action: 'Analyzed'
+          });
+        }
+      } else {
+        // No valid response - use local analysis
+        console.log('No valid response, using local analysis');
+        const localResult = analyzeTextReal(text);
+        displayLocalResult(localResult);
+      }
+
+    } catch (error) {
+      console.error('Analysis error:', error);
+      clearTimeout(safetyTimeout);
+      // Use improved CyberAnalyzer on error
+      const cyberResult = window.CyberAnalyzer ? CyberAnalyzer.analyze(text) : null;
+      if (cyberResult) {
+        displayCyberResult(cyberResult.result);
+      } else {
+        const localResult = analyzeTextReal(text);
+        displayLocalResult(localResult);
       }
     }
 
@@ -637,6 +726,46 @@
       </svg>
       Run Analysis
     `;
+  }
+
+  // Helper function to display local analysis result
+  function displayLocalResult(localResult) {
+    // Ensure all required fields exist with defaults
+    const result = {
+      verdict: localResult.verdict || 'Safe',
+      verdictClass: localResult.verdictClass || 'safe',
+      confidence: typeof localResult.confidence === 'number' ? localResult.confidence : 0,
+      primaryCategory: localResult.primaryCategory || 'safe',
+      categories: localResult.categories || [
+        { name: 'Toxicity', desc: 'General toxic language', score: 0, class: 'safe' },
+        { name: 'Hate Speech', desc: 'Targeting groups', score: 0, class: 'safe' },
+        { name: 'Harassment', desc: 'Direct attacks', score: 0, class: 'safe' },
+        { name: 'Profanity', desc: 'Vulgar language', score: 0, class: 'safe' }
+      ],
+      summary: localResult.summary || 'Analysis completed.'
+    };
+    displayAnalysisResult(result);
+  }
+
+  // Helper function to display CyberAnalyzer result with improved accuracy
+  function displayCyberResult(cyberResult) {
+    const scores = cyberResult.allScores || {};
+    const confidence = typeof cyberResult.confidence === 'number' ? cyberResult.confidence : 0;
+    
+    const result = {
+      verdict: cyberResult.isToxic ? 'Toxic Detected' : 'Safe',
+      verdictClass: cyberResult.isToxic ? (cyberResult.severity || 'medium') : 'safe',
+      confidence: confidence,
+      primaryCategory: cyberResult.category || 'safe',
+      categories: [
+        { name: 'Toxicity', desc: 'General toxic language', score: scores.toxic || 0, class: getScoreClass(scores.toxic || 0) },
+        { name: 'Hate Speech', desc: 'Targeting groups', score: scores.hate || 0, class: getScoreClass(scores.hate || 0) },
+        { name: 'Harassment', desc: 'Direct attacks', score: scores.harassment || 0, class: getScoreClass(scores.harassment || 0) },
+        { name: 'Profanity', desc: 'Vulgar language', score: scores.profanity || 0, class: getScoreClass(scores.profanity || 0) }
+      ],
+      summary: cyberResult.explanation || 'Analysis completed.'
+    };
+    displayAnalysisResult(result);
   }
 
   async function addToHistory(detection) {
@@ -725,38 +854,48 @@
   function displayAnalysisResult(result) {
     if (!elements.analysisContent || !elements.resultBadge || !elements.categoryList || !elements.categoriesCard) return;
 
-    // Update badge
-    elements.resultBadge.className = `result-badge ${result.verdictClass}`;
-    elements.resultBadge.textContent = result.verdict;
+    const verdict = result.verdict || 'Safe';
+    const verdictClass = result.verdictClass || 'safe';
+    const summary = result.summary || 'Analysis completed';
+    const categories = result.categories || [];
 
-    // Update main result
+    // Update badge
+    elements.resultBadge.className = `result-badge ${verdictClass}`;
+    elements.resultBadge.textContent = verdict;
+
+    // Show/hide action buttons based on verdict
+    if (elements.actionBtns) {
+      elements.actionBtns.style.display = (verdictClass !== 'safe') ? 'flex' : 'none';
+    }
+
+    // Update main result - simplified without confidence
     elements.analysisContent.innerHTML = `
       <div class="analysis-result">
         <div class="result-header">
-          <span class="result-verdict ${result.verdictClass}">${result.verdict}</span>
-          <div class="result-confidence">
-            <div class="confidence-value">${(result.confidence * 100).toFixed(1)}%</div>
-            <div class="confidence-label">Confidence</div>
-          </div>
+          <span class="result-verdict ${verdictClass}">${verdict}</span>
         </div>
-        <div class="result-summary">${result.summary}</div>
+        <div class="result-summary">${summary}</div>
       </div>
     `;
 
-    // Show and update categories
+    // Show and update categories - simplified without percentage
     elements.categoriesCard.style.display = 'block';
-    elements.categoryList.innerHTML = result.categories.map(cat => `
-      <div class="category-item">
-        <div class="category-info">
-          <div class="category-name">${cat.name}</div>
-          <div class="category-desc">${cat.desc}</div>
+    elements.categoryList.innerHTML = categories.map(cat => {
+      const score = typeof cat.score === 'number' && !isNaN(cat.score) ? cat.score : 0;
+      const hasDetection = score > 0.2;
+      return `
+        <div class="category-item">
+          <div class="category-info">
+            <div class="category-name">${cat.name || 'Unknown'}</div>
+            <div class="category-desc">${cat.desc || ''}</div>
+          </div>
+          <div class="category-bar">
+            <div class="category-fill ${cat.class || 'safe'}" style="width: ${score * 100}%"></div>
+          </div>
+          <div class="category-score">${hasDetection ? '✓' : '–'}</div>
         </div>
-        <div class="category-bar">
-          <div class="category-fill ${cat.class}" style="width: ${cat.score * 100}%"></div>
-        </div>
-        <div class="category-score">${(cat.score * 100).toFixed(0)}%</div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   function showAnalysisError(message) {
@@ -776,6 +915,7 @@
   function clearAnalyzer() {
     if (elements.analyzerText) elements.analyzerText.value = '';
     updateCharCount();
+    if (elements.actionBtns) elements.actionBtns.style.display = 'none';
     
     if (elements.analysisContent) {
       elements.analysisContent.innerHTML = `
@@ -802,7 +942,23 @@
     if (!elements.analyzerText) return;
     elements.analyzerText.value = dashboardData.testSamples[type] || '';
     updateCharCount();
-    clearAnalyzer();
+    // Reset results panel without wiping textarea
+    if (elements.analysisContent) {
+      elements.analysisContent.innerHTML = `
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+          <p>Click "Run Analysis" to analyze this sample</p>
+        </div>
+      `;
+    }
+    if (elements.resultBadge) {
+      elements.resultBadge.className = 'result-badge ready';
+      elements.resultBadge.textContent = 'Ready';
+    }
+    if (elements.categoriesCard) elements.categoriesCard.style.display = 'none';
+    if (elements.actionBtns) elements.actionBtns.style.display = 'none';
   }
 
   // ==========================================
@@ -1062,6 +1218,57 @@
       elements.resetSettingsBtn.addEventListener('click', resetAllSettings);
     }
 
+    // Action buttons (Safe Reply / Block / Report)
+    document.getElementById('safeReplyBtn')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      navigator.clipboard?.writeText(elements.analyzerText?.value || '').catch(() => {});
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => { btn.textContent = '💬 Safe Reply'; }, 1500);
+    });
+    document.getElementById('blockBtn')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      btn.textContent = '✅ Blocked';
+      setTimeout(() => { btn.textContent = '🚫 Block'; }, 1500);
+    });
+    document.getElementById('reportBtn')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      btn.textContent = '✅ Reported';
+      setTimeout(() => { btn.textContent = '📢 Report'; }, 1500);
+    });
+
+    // Link Scanner
+    if (elements.checkUrlBtn) {
+      elements.checkUrlBtn.addEventListener('click', () => {
+        let urlString = elements.testUrlInput?.value.trim() || '';
+        if (!urlString) return;
+        if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+          urlString = 'https://' + urlString;
+        }
+        if (elements.urlResultCard) elements.urlResultCard.style.display = 'block';
+        if (elements.urlResultTag) {
+          elements.urlResultTag.textContent = 'SCANNING';
+          elements.urlResultTag.className = 'result-tag warning';
+        }
+        if (elements.urlResultDesc) {
+          elements.urlResultDesc.textContent = 'Checking against active threat database...';
+        }
+        chrome.runtime.sendMessage({ action: 'testLink', url: urlString }, (response) => {
+          if (!response) {
+            if (elements.urlResultTag) { elements.urlResultTag.textContent = 'ERROR'; elements.urlResultTag.className = 'result-tag'; }
+            if (elements.urlResultDesc) { elements.urlResultDesc.textContent = 'Could not connect to the background engine.'; }
+            return;
+          }
+          if (!response.isMalicious) {
+            if (elements.urlResultTag) { elements.urlResultTag.textContent = 'SAFE'; elements.urlResultTag.className = 'result-tag safe'; }
+            if (elements.urlResultDesc) { elements.urlResultDesc.textContent = `${urlString} appears to be safe.`; }
+          } else {
+            if (elements.urlResultTag) { elements.urlResultTag.textContent = 'BLOCKED'; elements.urlResultTag.className = 'result-tag toxic'; }
+            if (elements.urlResultDesc) { elements.urlResultDesc.innerHTML = `<strong>${urlString}</strong> is flagged as malicious.<br><span style="color:var(--danger); display:block; margin-top:4px;">Reason: ${response.reason}</span>`; }
+          }
+        });
+      });
+    }
+
     // Handle "View All" button in recent activity
     document.querySelectorAll('.btn-text[data-tab]').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -1076,6 +1283,450 @@
   }
 
   // ==========================================
+  // Firebase Auth
+  // ==========================================
+  let currentUser = null;
+  let isLoginTab = true; // true = sign in, false = sign up
+
+  // Auth UI elements
+  const authElements = {
+    tabSignin: document.getElementById('auth-tab-signin'),
+    tabSignup: document.getElementById('auth-tab-signup'),
+    emailInput: document.getElementById('auth-email'),
+    passwordInput: document.getElementById('auth-password'),
+    confirmPasswordInput: document.getElementById('auth-confirm-password'),
+    submitBtn: document.getElementById('auth-submit-btn'),
+    errorDiv: document.getElementById('auth-error'),
+    stateLoggedOut: document.getElementById('state-logged-out'),
+    stateLoggedIn: document.getElementById('state-logged-in'),
+    profileAvatar: document.getElementById('profile-avatar'),
+    profileName: document.getElementById('profile-name'),
+    profileEmail: document.getElementById('profile-email'),
+    syncBadge: document.getElementById('sync-badge'),
+    syncBadgeLabel: document.getElementById('sync-badge-label'),
+    syncLastTime: document.getElementById('sync-last-time'),
+    syncNowBtn: document.getElementById('sync-now-btn'),
+    signoutBtn: document.getElementById('auth-signout-btn')
+  };
+
+  function initAuthListeners() {
+    // Tab switching
+    authElements.tabSignin?.addEventListener('click', () => switchAuthTab('signin'));
+    authElements.tabSignup?.addEventListener('click', () => switchAuthTab('signup'));
+
+    // Form submission
+    authElements.submitBtn?.addEventListener('click', handleAuthSubmit);
+
+    // Sign out
+    authElements.signoutBtn?.addEventListener('click', handleSignOut);
+
+    // Sync now
+    authElements.syncNowBtn?.addEventListener('click', handleSyncNow);
+
+    // Enter key on password field
+    authElements.passwordInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAuthSubmit();
+    });
+    authElements.confirmPasswordInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAuthSubmit();
+    });
+
+    // Listen for auth state changes from other tabs
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local') return;
+      if (changes.firebaseUID || changes.firebaseToken || changes.firebaseSyncEnabled) {
+        checkAuthState();
+      }
+    });
+  }
+
+  function switchAuthTab(tab) {
+    isLoginTab = tab === 'signin';
+    authElements.tabSignin?.classList.toggle('active', isLoginTab);
+    authElements.tabSignup?.classList.toggle('active', !isLoginTab);
+
+    if (authElements.confirmPasswordInput) {
+      authElements.confirmPasswordInput.style.display = isLoginTab ? 'none' : 'block';
+    }
+    if (authElements.submitBtn) {
+      authElements.submitBtn.textContent = isLoginTab ? 'Sign In' : 'Create Account';
+    }
+    hideAuthError();
+  }
+
+  function showAuthError(message) {
+    if (authElements.errorDiv) {
+      authElements.errorDiv.textContent = message;
+      authElements.errorDiv.classList.add('visible');
+    }
+  }
+
+  function hideAuthError() {
+    if (authElements.errorDiv) {
+      authElements.errorDiv.textContent = '';
+      authElements.errorDiv.classList.remove('visible');
+    }
+  }
+
+  function setLoading(loading) {
+    if (authElements.submitBtn) {
+      authElements.submitBtn.disabled = loading;
+      if (loading) {
+        authElements.submitBtn.innerHTML = '<span class="spin-icon">↻</span> Please wait...';
+      } else {
+        authElements.submitBtn.textContent = isLoginTab ? 'Sign In' : 'Create Account';
+      }
+    }
+  }
+
+  async function handleAuthSubmit() {
+    const email = authElements.emailInput?.value.trim() || '';
+    const password = authElements.passwordInput?.value || '';
+    const confirmPassword = authElements.confirmPasswordInput?.value || '';
+
+    if (!email || !password) {
+      showAuthError('Please enter both email and password');
+      return;
+    }
+
+    if (!isLoginTab && password !== confirmPassword) {
+      showAuthError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      showAuthError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    hideAuthError();
+
+    try {
+      if (isLoginTab) {
+        // Sign in
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        await handleAuthSuccess(userCredential.user);
+      } else {
+        // Sign up
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        await handleAuthSuccess(userCredential.user);
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      let message = 'Authentication failed';
+      switch (error.code) {
+        case 'auth/invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'auth/user-not-found':
+          message = 'No account found with this email';
+          break;
+        case 'auth/wrong-password':
+          message = 'Incorrect password';
+          break;
+        case 'auth/email-already-in-use':
+          message = 'An account already exists with this email';
+          break;
+        case 'auth/weak-password':
+          message = 'Password is too weak';
+          break;
+        case 'auth/invalid-credential':
+          message = 'Invalid email or password';
+          break;
+        default:
+          message = error.message || 'Authentication failed';
+      }
+      showAuthError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAuthSuccess(user) {
+    currentUser = user;
+
+    // Get ID token
+    const token = await user.getIdToken();
+
+    // Store auth data for content.js to use
+    await chrome.storage.local.set({
+      firebaseUID: user.uid,
+      firebaseToken: token,
+      firebaseSyncEnabled: true,
+      firebaseEmail: user.email,
+      firebaseDisplayName: user.displayName || user.email?.split('@')[0] || 'User'
+    });
+
+    updateAuthUI(user);
+    hideAuthError();
+
+    // Clear form
+    if (authElements.emailInput) authElements.emailInput.value = '';
+    if (authElements.passwordInput) authElements.passwordInput.value = '';
+    if (authElements.confirmPasswordInput) authElements.confirmPasswordInput.value = '';
+
+    // Trigger initial sync
+    await handleSyncNow();
+  }
+
+  async function handleSignOut() {
+    try {
+      await firebase.auth().signOut();
+      currentUser = null;
+
+      // Clear stored auth data
+      await chrome.storage.local.set({
+        firebaseUID: null,
+        firebaseToken: null,
+        firebaseSyncEnabled: false
+      });
+
+      updateAuthUI(null);
+    } catch (error) {
+      console.error('Sign out error:', error);
+      showAuthError('Failed to sign out');
+    }
+  }
+
+  async function handleSyncNow() {
+    if (!currentUser) return;
+
+    const btn = authElements.syncNowBtn;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spin-icon">↻</span> Syncing...';
+    }
+
+    try {
+        // Refresh token
+        const token = await currentUser.getIdToken(true);
+        await chrome.storage.local.set({ firebaseToken: token });
+
+        // Get all relevant data from local storage
+        const data = await chrome.storage.local.get([
+            'toxicCount', 
+            'blurCount', 
+            'inferenceCount', 
+            'installDate',
+            'detectedHistory',
+            'dailyTrends'
+        ]);
+
+        const toxicCount = data.toxicCount || 0;
+        const blurCount = data.blurCount || 0;
+        const inferenceCount = data.inferenceCount || 0;
+        const detectedHistory = data.detectedHistory || [];
+        const dailyTrends = data.dailyTrends || {};
+
+        // Calculate safety score
+        let safetyScore = 94;
+        if (inferenceCount > 0) {
+            const threatRatio = toxicCount / inferenceCount;
+            safetyScore = Math.max(50, Math.round(100 - threatRatio * 100));
+        }
+
+        let riskLevel = 'low';
+        if (safetyScore < 50) riskLevel = 'high';
+        else if (safetyScore < 75) riskLevel = 'elevated';
+
+        const installDate = data.installDate || Date.now();
+        const activeDays = Math.max(1, Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24)));
+
+        const projectId = 'silentshield-39e11';
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${currentUser.uid}/dashboard/summary`;
+
+        // Updated payload with history items included
+        const payload = {
+            fields: {
+                safetyScore: { integerValue: String(safetyScore) },
+                toxicDetected: { integerValue: String(toxicCount) },
+                autoBlurred: { integerValue: String(blurCount) },
+                inferences: { integerValue: String(inferenceCount) },
+                activeDays: { integerValue: String(activeDays) },
+                riskLevel: { stringValue: riskLevel },
+                lastSyncedAt: { integerValue: String(Date.now()) },
+                
+                // === Added/Improved Fields ===
+                toxicCount: { integerValue: String(toxicCount) },
+                blurCount: { integerValue: String(blurCount) },
+                inferenceCount: { integerValue: String(inferenceCount) },
+                installDate: { integerValue: String(installDate) },
+                
+                // History items (array)
+                detectedHistory: {
+                    arrayValue: {
+                        values: detectedHistory.map(item => ({
+                            mapValue: {
+                                fields: {
+                                    id: { stringValue: String(item.id || Date.now()) },
+                                    text: { stringValue: item.text || '' },
+                                    category: { stringValue: item.category || 'toxic' },
+                                    confidence: { stringValue: item.confidence || '' },
+                                    score: { doubleValue: item.score || 0 },
+                                    source: { stringValue: item.source || 'Unknown' },
+                                    action: { stringValue: item.action || 'Detected' },
+                                    timestamp: { integerValue: String(item.timestamp || Date.now()) }
+                                }
+                            }
+                        }))
+                    }
+                },
+
+                // Daily trends
+                dailyTrends: {
+                    mapValue: {
+                        fields: Object.keys(dailyTrends).reduce((acc, date) => {
+                            acc[date] = {
+                                mapValue: {
+                                    fields: {
+                                        toxic: { integerValue: String(dailyTrends[date].toxic || 0) },
+                                        suspicious: { integerValue: String(dailyTrends[date].suspicious || 0) },
+                                        safe: { integerValue: String(dailyTrends[date].safe || 0) }
+                                    }
+                                }
+                            };
+                            return acc;
+                        }, {})
+                    }
+                }
+            }
+        };
+
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Sync failed: ${response.status} - ${errorText}`);
+        }
+
+        // Success
+        updateSyncTime(Date.now());
+        console.log('✅ Dashboard + History synced to Firebase successfully');
+
+    } catch (error) {
+        console.error('Sync error:', error);
+        if (authElements.syncBadgeLabel) {
+            authElements.syncBadgeLabel.textContent = 'Sync failed';
+        }
+        if (authElements.syncBadge) {
+            authElements.syncBadge.classList.remove('sync-badge');
+            authElements.syncBadge.classList.add('sync-badge-off');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Sync Now
+            `;
+        }
+    }
+}
+
+  function updateSyncTime(timestamp) {
+    if (authElements.syncLastTime) {
+      const date = new Date(timestamp);
+      authElements.syncLastTime.textContent = 'Last sync: ' + date.toLocaleTimeString();
+    }
+    if (authElements.syncBadge) {
+      authElements.syncBadge.classList.remove('sync-badge-off');
+      authElements.syncBadge.classList.add('sync-badge');
+    }
+    if (authElements.syncBadgeLabel) {
+      authElements.syncBadgeLabel.textContent = 'Cloud sync active';
+    }
+  }
+
+  function updateAuthUI(user) {
+    if (!authElements.stateLoggedOut || !authElements.stateLoggedIn) return;
+
+    if (user) {
+      // Show logged-in state
+      authElements.stateLoggedOut.classList.remove('active');
+      authElements.stateLoggedIn.classList.add('active');
+
+      // Update profile info
+      const displayName = user.displayName || user.email?.split('@')[0] || 'User';
+      const initials = displayName.substring(0, 2).toUpperCase();
+
+      if (authElements.profileAvatar) {
+        authElements.profileAvatar.textContent = initials;
+      }
+      if (authElements.profileName) {
+        authElements.profileName.textContent = displayName;
+      }
+      if (authElements.profileEmail) {
+        authElements.profileEmail.textContent = user.email || '';
+      }
+
+      // Update sync status
+      updateSyncTime(Date.now());
+    } else {
+      // Show logged-out state
+      authElements.stateLoggedOut.classList.add('active');
+      authElements.stateLoggedIn.classList.remove('active');
+
+      // Clear profile info
+      if (authElements.profileAvatar) authElements.profileAvatar.textContent = '?';
+      if (authElements.profileName) authElements.profileName.textContent = '—';
+      if (authElements.profileEmail) authElements.profileEmail.textContent = '—';
+      if (authElements.syncLastTime) authElements.syncLastTime.textContent = '—';
+      if (authElements.syncBadgeLabel) authElements.syncBadgeLabel.textContent = 'Not synced';
+      if (authElements.syncBadge) {
+        authElements.syncBadge.classList.remove('sync-badge');
+        authElements.syncBadge.classList.add('sync-badge-off');
+      }
+    }
+  }
+
+  async function checkAuthState() {
+    // Check if Firebase is initialized
+    if (typeof firebase === 'undefined' || !firebase.auth) {
+      console.warn('Firebase not available - waiting for SDK to load...');
+      // Retry after a short delay
+      setTimeout(checkAuthState, 500);
+      return;
+    }
+
+    // Listen to auth state changes
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        // Refresh token
+        const token = await user.getIdToken();
+        await chrome.storage.local.set({
+          firebaseUID: user.uid,
+          firebaseToken: token,
+          firebaseSyncEnabled: true
+        });
+        updateAuthUI(user);
+      } else {
+        currentUser = null;
+        updateAuthUI(null);
+      }
+    });
+
+    // Also check stored auth state
+    const stored = await chrome.storage.local.get(['firebaseUID', 'firebaseSyncEnabled']);
+    if (stored.firebaseUID && stored.firebaseSyncEnabled) {
+      // User should be signed in, Firebase will verify via onAuthStateChanged
+      console.log('Found stored auth state for UID:', stored.firebaseUID);
+    }
+  }
+
+  // ==========================================
   // Initialize
   // ==========================================
   async function init() {
@@ -1087,6 +1738,10 @@
     renderHistory();
     updateCharCount();
     initEventListeners();
+    initAuthListeners();
+
+    // Initialize Firebase auth
+    await checkAuthState();
 
     // Render chart after a short delay to ensure canvas is ready
     setTimeout(renderChart, 100);
@@ -1104,6 +1759,19 @@
         updateSafetyScore();
       }
     }, 30000);
+
+    // Periodic token refresh every 50 minutes (tokens expire after 1 hour)
+    setInterval(async () => {
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdToken(true);
+          await chrome.storage.local.set({ firebaseToken: token });
+          console.log('Token refreshed');
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+        }
+      }
+    }, 50 * 60 * 1000);
   }
 
   // Start the dashboard

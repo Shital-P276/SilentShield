@@ -1436,3 +1436,120 @@ input[type="range"]::-webkit-slider-thumb:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-3);
 }
+
+/* ============================================
+   Spin Animation for Loading States
+   ============================================ */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+  transform-origin: center;
+}
+
+/* ============================================
+   Analyzer Action Buttons (Safe Reply / Block / Report)
+   ============================================ */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  padding: 0 24px 24px;
+}
+
+.action-btn {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-family: var(--sans);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  border: 1px solid transparent;
+}
+
+.action-btn:hover { opacity: 0.8; }
+.action-btn:active { transform: scale(0.96); }
+
+.safe-reply-btn {
+  background: var(--raised);
+  border-color: var(--border-strong);
+  color: var(--text-1);
+}
+
+.block-btn {
+  background: var(--danger-muted);
+  border-color: rgba(224, 92, 110, 0.3);
+  color: var(--danger);
+}
+
+.report-btn {
+  background: var(--amber-muted);
+  border-color: rgba(212, 145, 58, 0.3);
+  color: var(--amber);
+}
+
+/* ============================================
+   Link Scanner Result Card
+   ============================================ */
+.result-card {
+  margin-top: 24px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+}
+
+.result-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.result-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.result-sub {
+  font-size: 14px;
+  color: var(--text-1);
+  line-height: 1.5;
+}
+
+.result-tag {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--raised);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+
+.result-tag.safe {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: rgba(52, 199, 123, 0.3);
+}
+
+.result-tag.toxic {
+  background: var(--danger-muted);
+  color: var(--danger);
+  border-color: rgba(224, 92, 110, 0.3);
+}
+
+.result-tag.warning {
+  background: var(--amber-muted);
+  color: var(--amber);
+  border-color: rgba(212, 145, 58, 0.3);
+}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SilentShield AI Pro</title>
+  <title>SilentShield</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
           <path d="M4.5 6.5L6 8L8.5 5" stroke="#34c77b" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      SilentShield AI Pro
+      SilentShield
     </div>
     <div class="badge">
       <div class="badge-dot"></div>
@@ -48,11 +48,11 @@
       <div class="score-block">
         <div class="score-eyebrow">Feed Safety Score</div>
         <div class="score-main">
-          <div class="score-num" id="score-display">0</div>
+          <div class="score-num" id="score-display">100</div>
           <div class="score-pct">%</div>
         </div>
         <div class="score-bar">
-          <div class="score-fill" id="score-fill"></div>
+          <div class="score-fill" id="score-fill" style="width: 100%;"></div>
         </div>
         <div class="score-model">distilbert-base-uncased · local inference</div>
       </div>
@@ -84,38 +84,36 @@
       </button>
     </div>
 
-    <!-- ANALYZER (TEST BENCH) -->
+    <!-- TEST BENCH -->
     <div class="tab-panel" id="tab-testbench">
       <p class="bench-desc">Paste any comment to see how the local model will classify it before it hits your feed.</p>
       <textarea id="test-text" rows="5" placeholder="Paste a comment to analyze…"></textarea>
-      <button class="run-btn" id="run-btn">Run Inference</button>
+      <button class="run-btn" id="run-btn">Run Analysis</button>
       <div class="result-card" id="result-card">
         <div class="result-top">
           <span class="result-label">Result</span>
           <span class="result-tag" id="result-tag">—</span>
         </div>
         <div class="result-score" id="result-score">—</div>
-        <div class="result-sub">confidence score</div>
-        <!-- Action buttons preserved from Folder 1 -->
-        <div class="action-buttons" id="action-buttons" style="display:none; margin-top:12px; gap:8px; display:none;">
+        <div class="result-sub" id="result-explanation" style="display:none; margin-top: 10px; line-height: 1.5; color: var(--text-2); font-size: 13px;"></div>
+        <div class="action-buttons" id="action-buttons" style="display:none;">
           <button class="action-btn safe-reply-btn" id="safeReplyBtn">💬 Safe Reply</button>
-          <button class="action-btn block-btn" id="blockBtn">🚫 Block</button>
-          <button class="action-btn report-btn" id="reportBtn">📢 Report</button>
         </div>
       </div>
     </div>
 
     <!-- LINK CHECKER -->
     <div class="tab-panel" id="tab-linkchecker">
-      <p class="bench-desc">Paste a URL to manually check if it is flagged as a phishing or malware risk.</p>
+      <p class="bench-desc">Paste a URL to manually check if it is flagged as a phishing risk against our 159k+ DB.</p>
       <input type="text" id="test-url" placeholder="https://example.com" />
       <button class="run-btn" id="check-url-btn">Scan Link</button>
-      <div class="result-card" id="url-result-card">
+      <!-- show class added here so the card is always visible, not hidden on load -->
+      <div class="result-card show" id="url-result-card">
         <div class="result-top">
           <span class="result-label">Result</span>
           <span class="result-tag" id="url-result-tag">—</span>
         </div>
-        <div class="result-sub" id="url-result-desc" style="margin-top: 10px; font-size: 13px; color: var(--text-1);">Awaiting input...</div>
+        <div class="result-sub" id="url-result-desc" style="margin-top: 10px; font-size: 13px; color: var(--text-1);">Awaiting input…</div>
       </div>
     </div>
 
@@ -129,8 +127,8 @@
           </svg>
         </div>
         <div>
-          <div class="about-name">SilentShield AI Pro</div>
-          <div class="about-version">v2.0.0</div>
+          <div class="about-name">SilentShield</div>
+          <div class="about-version">v1.0.0</div>
         </div>
       </div>
       <div class="about-body">
@@ -152,6 +150,7 @@
     <span>SHIELD-250-SF</span>
   </footer>
 
+  <script src="../cyber-analyzer.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

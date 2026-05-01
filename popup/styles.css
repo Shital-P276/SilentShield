@@ -605,3 +605,21 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--text-3);
   letter-spacing: 0.06em;
 }
+/* ── ACTION BUTTONS (Safe Reply / Block / Report) ── */
+.action-btn {
+  padding: 7px 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--border-strong);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.safe-reply-btn { background: var(--accent-muted);  color: var(--accent);  border-color: rgba(52,199,123,0.2); }
+.safe-reply-btn:hover { background: var(--accent); color: #000; }
+.block-btn      { background: var(--danger-muted);  color: var(--danger);  border-color: rgba(224,92,110,0.2); }
+.block-btn:hover { background: var(--danger); color: #fff; }
+.report-btn     { background: var(--amber-muted);   color: var(--amber);   border-color: rgba(212,145,58,0.2); }
+.report-btn:hover { background: var(--amber); color: #000; }
