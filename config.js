@@ -10,7 +10,6 @@ const CONFIG = {
   AUTH_BASE_URL: 'https://identitytoolkit.googleapis.com/v1',
   TOKEN_URL: 'https://securetoken.googleapis.com/v1',
   
-  
 };
 
 // Export for ES modules or assign to window
